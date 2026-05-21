@@ -1,0 +1,63 @@
+﻿services:
+  - type: web
+    name: sistema-practicas-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: uploads
+      mountPath: /opt/render/project/src/backend/uploads
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_SYNC
+        value: "true"
+      - key: DB_HOST
+        fromDatabase:
+          name: sistema-practicas-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: sistema-practicas-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: sistema-practicas-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: sistema-practicas-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: sistema-practicas-db
+          property: password
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRE
+        value: 7d
+      - key: FRONTEND_URL
+        sync: false
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: Sistema Practicas ESPOCH <noreply@espoch.edu.ec>
+      - key: MAX_FILE_SIZE
+        value: "5242880"
+      - key: ALLOWED_FILE_TYPES
+        value: .pdf,.doc,.docx
+
+databases:
+  - name: sistema-practicas-db
+    plan: free
+    databaseName: practicas_espoch
