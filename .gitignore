@@ -4,3 +4,4 @@ uploads/
 dist/
 build/
 scratch_*.txt
+~$*.xlsx
