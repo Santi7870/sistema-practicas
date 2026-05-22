@@ -291,9 +291,19 @@ const DashboardAdmin = ({ estadisticas }) => {
 
 // Dashboard del Estudiante
 const DashboardEstudiante = ({ data, onReload }) => {
+  const { usuario } = useAuth();
   const { estudiante, siguientePaso, accionesRequeridas, tieneComunitariaAprobada, tieneLaboralAprobada } = data;
   const [iniciandoLaboral, setIniciandoLaboral] = useState(false);
   const [errorLaboral, setErrorLaboral] = useState('');
+
+  const obtenerNombreDesdeEmail = (email) => {
+    if (!email) return 'Estudiante';
+    const prefix = email.split('@')[0];
+    const parts = prefix.split('.');
+    return parts
+      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      .join(' ');
+  };
 
   const datosCompletos = estudiante.nombres && estudiante.codigo && estudiante.semestre;
   const finalizado = estudiante.estadoProceso === 'finalizado' || (data.notaFinal !== null && data.notaFinal >= 7);
@@ -409,7 +419,7 @@ const DashboardEstudiante = ({ data, onReload }) => {
           </div>
           
           <h2 className="text-4xl font-black text-white mb-3 tracking-tight">
-            ¡Felicitaciones, {estudiante.nombres || 'David'}! 🎉
+            ¡Felicitaciones, {estudiante.nombres || obtenerNombreDesdeEmail(usuario?.email)}! 🎉
           </h2>
           <h3 className="text-xl md:text-2xl font-bold text-indigo-400 mb-6">
             Prácticas Comunitarias Completadas con Éxito
@@ -473,7 +483,7 @@ const DashboardEstudiante = ({ data, onReload }) => {
           </div>
           
           <h2 className="text-4xl md:text-5xl font-black text-white mb-3 tracking-tight">
-            ¡Enhorabuena, {estudiante.nombres || 'David'}! 🏆
+            ¡Enhorabuena, {estudiante.nombres || obtenerNombreDesdeEmail(usuario?.email)}! 🏆
           </h2>
           <h3 className="text-xl md:text-2xl font-black text-emerald-400 mb-6">
             Prácticas Preprofesionales 100% Acreditadas
@@ -544,7 +554,7 @@ const DashboardEstudiante = ({ data, onReload }) => {
               Panel de Estudiante
             </div>
             <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">
-              Bienvenido de nuevo, <span className="bg-gradient-to-r from-sky-400 to-indigo-300 bg-clip-text text-transparent">{estudiante.nombres || 'David Panchi'}</span> 👋
+              Bienvenido de nuevo, <span className="bg-gradient-to-r from-sky-400 to-indigo-300 bg-clip-text text-transparent">{estudiante.nombres || obtenerNombreDesdeEmail(usuario?.email)}</span> 👋
             </h2>
             <p className="text-slate-300 text-sm md:text-base max-w-xl">
               Monitorea el progreso de tus prácticas preprofesionales, realiza tus entregas por ciclos y mantente en comunicación con tu tutor.
