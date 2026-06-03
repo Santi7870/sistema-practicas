@@ -104,70 +104,70 @@ const CompletarDatos = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <Navbar />
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="flex-1 max-w-3xl w-full mx-auto px-4 py-6 space-y-6 animate-fadeIn">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="bg-white rounded-xl border-l-4 border-l-[#ec3724] border-t border-r border-b border-slate-200 shadow-sm p-6">
+          <h1 className="text-xl font-bold text-slate-900 leading-tight">
             Completar Datos Personales
           </h1>
-          <p className="text-gray-600">
+          <p className="text-slate-500 text-xs font-semibold mt-1">
             Por favor completa tu información para continuar con el proceso de
-            prácticas preprofesionales.
+            prácticas preprofesionales de forma oficial en la institución.
           </p>
         </div>
 
         {/* Mensaje de éxito/error */}
         {mensaje.texto && (
           <div
-            className={`alert ${
-              mensaje.tipo === 'success' ? 'alert-success' : 'alert-error'
-            } flex items-center space-x-2 mb-6`}
+            className={`p-4 rounded border flex items-center space-x-2 text-xs shadow-sm mb-6 ${
+              mensaje.tipo === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-250' : 'bg-red-50 text-red-700 border-red-200'
+            }`}
           >
             {mensaje.tipo === 'success' ? (
-              <FiCheckCircle className="h-5 w-5" />
+              <FiCheckCircle className="h-4 w-4" />
             ) : (
-              <FiAlertCircle className="h-5 w-5" />
+              <FiAlertCircle className="h-4 w-4" />
             )}
-            <span>{mensaje.texto}</span>
+            <span className="font-bold">{mensaje.texto}</span>
           </div>
         )}
 
         {/* Formulario */}
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white rounded-xl border border-slate-250 p-6 shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Nombres completos */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                 Nombres Completos <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiUser className="h-5 w-5 text-gray-400" />
+                  <FiUser className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                   type="text"
                   name="nombres"
                   value={formData.nombres}
                   onChange={handleChange}
-                  className={`input pl-10 ${errors.nombres ? 'input-error' : ''}`}
+                  className={`w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#ec3724] focus:border-[#ec3724] text-xs text-slate-700 placeholder-slate-400 transition ${errors.nombres ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                   placeholder="Ej: Juan Carlos Pérez López"
                 />
               </div>
               {errors.nombres && (
-                <p className="mt-1 text-sm text-red-600">{errors.nombres}</p>
+                <p className="mt-1 text-[11px] font-bold text-red-650">{errors.nombres}</p>
               )}
             </div>
 
             {/* Código */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                 Código de Estudiante <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiHash className="h-5 w-5 text-gray-400" />
+                  <FiHash className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                   type="text"
@@ -175,32 +175,32 @@ const CompletarDatos = () => {
                   value={formData.codigo}
                   onChange={handleChange}
                   maxLength="4"
-                  className={`input pl-10 ${errors.codigo ? 'input-error' : ''}`}
+                  className={`w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#ec3724] focus:border-[#ec3724] text-xs text-slate-700 placeholder-slate-400 transition ${errors.codigo ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                   placeholder="Ej: 1234"
                 />
               </div>
               {errors.codigo && (
-                <p className="mt-1 text-sm text-red-600">{errors.codigo}</p>
+                <p className="mt-1 text-[11px] font-bold text-red-650">{errors.codigo}</p>
               )}
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-[10px] text-slate-400 font-semibold uppercase">
                 Código de 4 dígitos proporcionado por la institución
               </p>
             </div>
 
             {/* Semestre */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                 Semestre Actual <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiBookOpen className="h-5 w-5 text-gray-400" />
+                  <FiBookOpen className="h-4 w-4 text-slate-400" />
                 </div>
                 <select
                   name="semestre"
                   value={formData.semestre}
                   onChange={handleChange}
-                  className={`input pl-10 ${errors.semestre ? 'input-error' : ''}`}
+                  className={`w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#ec3724] focus:border-[#ec3724] text-xs text-slate-700 bg-white appearance-none cursor-pointer transition ${errors.semestre ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                 >
                   <option value="">Selecciona tu semestre</option>
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((sem) => (
@@ -211,19 +211,19 @@ const CompletarDatos = () => {
                 </select>
               </div>
               {errors.semestre && (
-                <p className="mt-1 text-sm text-red-600">{errors.semestre}</p>
+                <p className="mt-1 text-[11px] font-bold text-red-650">{errors.semestre}</p>
               )}
             </div>
 
             {/* Información adicional */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
               <div className="flex items-start space-x-3">
-                <FiAlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                <FiAlertCircle className="h-4 w-4 text-slate-500 mt-0.5" />
                 <div>
-                  <h4 className="text-sm font-medium text-blue-900 mb-1">
+                  <h4 className="text-xs font-bold text-slate-800 mb-1">
                     Información Importante
                   </h4>
-                  <ul className="text-sm text-blue-800 space-y-1">
+                  <ul className="text-xs text-slate-655 space-y-1 font-semibold text-slate-600">
                     <li>• Verifica que tu código sea correcto</li>
                     <li>• Una vez guardado, no podrás cambiar tu código</li>
                     <li>• Estos datos serán usados en todos los documentos oficiales</li>
@@ -233,24 +233,24 @@ const CompletarDatos = () => {
             </div>
 
             {/* Botones */}
-            <div className="flex items-center justify-end space-x-4 pt-6 border-t">
+            <div className="flex items-center justify-end space-x-4 pt-4 border-t border-slate-200">
               <button
                 type="button"
                 onClick={() => navigate('/dashboard')}
-                className="btn btn-secondary"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded text-xs font-bold transition"
                 disabled={cargando}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="btn btn-primary flex items-center space-x-2"
+                className="px-4 py-2 bg-[#ec3724] hover:bg-[#d12a1a] text-white font-bold rounded text-xs transition flex items-center space-x-1.5 shadow-sm"
                 disabled={cargando}
               >
                 {cargando ? (
                   <>
                     <svg
-                      className="animate-spin h-5 w-5"
+                      className="animate-spin h-4 w-4 mr-1 text-white"
                       viewBox="0 0 24 24"
                     >
                       <circle
@@ -272,7 +272,7 @@ const CompletarDatos = () => {
                   </>
                 ) : (
                   <>
-                    <FiSave className="h-5 w-5" />
+                    <FiSave className="h-4 w-4" />
                     <span>Guardar Datos</span>
                   </>
                 )}
@@ -283,7 +283,7 @@ const CompletarDatos = () => {
 
         {/* Ayuda */}
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-xs text-slate-500 font-semibold uppercase">
             ¿Tienes problemas? Contacta al administrador del sistema
           </p>
         </div>

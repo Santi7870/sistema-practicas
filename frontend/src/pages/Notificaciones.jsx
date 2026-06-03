@@ -25,14 +25,12 @@ const Notificaciones = () => {
 
   const obtenerEnlace = (notificacion) => {
     if (notificacion.enlace) {
-      // Corregir sobre la marcha enlaces antiguos incorrectos guardados en la BD
       if (notificacion.enlace === '/mis-practicas') {
         return '/estudiante/mis-practicas';
       }
       return notificacion.enlace;
     }
     
-    // Fallback inteligente para notificaciones antiguas que no tienen enlace en BD
     if (esAdmin()) {
       return '/admin/estudiantes';
     } else {
@@ -121,15 +119,15 @@ const Notificaciones = () => {
 
   const getColorTipo = (tipo) => {
     const colores = {
-      registro: 'bg-blue-100 text-blue-600',
-      aprobacion: 'bg-green-100 text-green-600',
-      rechazo: 'bg-red-100 text-red-600',
-      documento_subido: 'bg-purple-100 text-purple-600',
-      documento_revisado: 'bg-yellow-100 text-yellow-600',
-      cambio_estado: 'bg-indigo-100 text-indigo-600',
-      sistema: 'bg-gray-100 text-gray-600',
+      registro: 'bg-slate-50 border-slate-200 text-slate-600',
+      aprobacion: 'bg-slate-50 border-slate-200 text-[#ec3724]',
+      rechazo: 'bg-red-50 border-red-100 text-red-600',
+      documento_subido: 'bg-slate-50 border-slate-200 text-slate-600',
+      documento_revisado: 'bg-slate-50 border-slate-200 text-slate-600',
+      cambio_estado: 'bg-slate-50 border-slate-200 text-slate-600',
+      sistema: 'bg-slate-50 border-slate-200 text-slate-600',
     };
-    return colores[tipo] || 'bg-gray-100 text-gray-600';
+    return colores[tipo] || 'bg-slate-50 border-slate-200 text-slate-600';
   };
 
   const notificacionesFiltradas = notificaciones.filter((not) => {
@@ -142,37 +140,37 @@ const Notificaciones = () => {
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
         <div className="flex items-center justify-center h-[calc(100vh-64px)]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#ec3724]"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <Navbar />
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div className="border-l-4 border-[#ec3724] pl-4">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
               Notificaciones
             </h1>
-            <p className="text-gray-600">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">
               {noLeidas > 0
-                ? `Tienes ${noLeidas} ${noLeidas === 1 ? 'notificación nueva' : 'notificaciones nuevas'}`
+                ? `Tienes ${noLeidas} ${noLeidas === 1 ? 'notificación nueva' : 'notificaciones nuevas'} sin leer`
                 : 'No tienes notificaciones nuevas'}
             </p>
           </div>
           {noLeidas > 0 && (
             <button
               onClick={marcarTodasLeidas}
-              className="btn btn-outline flex items-center space-x-2"
+              className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors border border-slate-200 flex items-center space-x-1.5"
             >
-              <FiCheck className="h-5 w-5" />
+              <FiCheck className="h-3.5 w-3.5" />
               <span>Marcar todas como leídas</span>
             </button>
           )}
@@ -181,44 +179,46 @@ const Notificaciones = () => {
         {/* Mensaje */}
         {mensaje.texto && (
           <div
-            className={`alert ${
-              mensaje.tipo === 'success' ? 'alert-success' : 'alert-error'
-            } flex items-center space-x-2 mb-6`}
+            className={`p-3 rounded-lg border text-xs font-bold uppercase tracking-wider flex items-center space-x-2 mb-6 ${
+              mensaje.tipo === 'success'
+                ? 'bg-green-50 border-green-200 text-green-700'
+                : 'bg-red-50 border-red-200 text-red-700'
+            }`}
           >
-            <FiAlertCircle className="h-5 w-5" />
+            <FiAlertCircle className="h-4 w-4" />
             <span>{mensaje.texto}</span>
           </div>
         )}
 
         {/* Filtros */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setFiltro('todas')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
                 filtro === 'todas'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-[#ec3724] text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               Todas ({notificaciones.length})
             </button>
             <button
               onClick={() => setFiltro('no_leidas')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
                 filtro === 'no_leidas'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-[#ec3724] text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               No leídas ({noLeidas})
             </button>
             <button
               onClick={() => setFiltro('leidas')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
                 filtro === 'leidas'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-[#ec3724] text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               Leídas ({notificaciones.length - noLeidas})
@@ -228,17 +228,17 @@ const Notificaciones = () => {
 
         {/* Lista de notificaciones */}
         {notificacionesFiltradas.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <FiBell className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              No hay notificaciones
+          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+            <FiBell className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+            <h3 className="text-base font-black text-slate-800 uppercase tracking-wider mb-1">
+              Bandeja Vacía
             </h3>
-            <p className="text-gray-600">
+            <p className="text-xs font-semibold text-slate-500 max-w-sm mx-auto leading-relaxed">
               {filtro === 'leidas'
-                ? 'No tienes notificaciones leídas'
+                ? 'No tienes notificaciones registradas como leídas'
                 : filtro === 'no_leidas'
-                ? '¡Estás al día! No tienes notificaciones pendientes'
-                : 'Aún no tienes ninguna notificación'}
+                ? 'No tienes alertas pendientes en tu bandeja'
+                : 'Aún no has recibido ninguna notificación en el sistema'}
             </p>
           </div>
         ) : (
@@ -252,9 +252,9 @@ const Notificaciones = () => {
               return (
                 <div
                   key={notificacion.id}
-                  className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-all p-4 ${
-                    !notificacion.leida ? 'border-l-4 border-primary-500 bg-primary-50/10' : ''
-                  } ${enlaceDestino ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+                  className={`bg-white rounded-xl border border-slate-200 transition-all p-4 ${
+                    !notificacion.leida ? 'border-l-4 border-[#ec3724] bg-slate-50/50' : ''
+                  } ${enlaceDestino ? 'cursor-pointer hover:border-slate-300' : ''}`}
                   onClick={async () => {
                     if (!notificacion.leida) {
                       await marcarComoLeida(notificacion.id);
@@ -266,36 +266,36 @@ const Notificaciones = () => {
                 >
                   <div className="flex items-start space-x-4">
                     {/* Icono */}
-                    <div className={`p-3 rounded-full ${colorTipo}`}>
-                      <Icono className="h-6 w-6" />
+                    <div className={`p-2.5 rounded-lg border flex-shrink-0 ${colorTipo}`}>
+                      <Icono className="h-5 w-5" />
                     </div>
 
                     {/* Contenido */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-start justify-between mb-1">
                         <h3
-                          className={`text-lg font-semibold ${
+                          className={`text-sm font-bold truncate ${
                             !notificacion.leida
-                              ? 'text-gray-900'
-                              : 'text-gray-600'
+                              ? 'text-slate-900 font-extrabold'
+                              : 'text-slate-600'
                           }`}
                         >
                           {notificacion.titulo}
                         </h3>
                         {!notificacion.leida && (
-                          <span className="ml-2 w-2 h-2 bg-primary-500 rounded-full"></span>
+                          <span className="ml-2 w-2 h-2 bg-[#ec3724] rounded-full flex-shrink-0 mt-1.5"></span>
                         )}
                       </div>
                       <p
-                        className={`text-sm mb-2 ${
+                        className={`text-xs mb-2 leading-relaxed ${
                           !notificacion.leida
-                            ? 'text-gray-700'
-                            : 'text-gray-500'
+                            ? 'text-slate-700 font-semibold'
+                            : 'text-slate-500 font-medium'
                         }`}
                       >
                         {notificacion.mensaje}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                         {format(
                           new Date(notificacion.createdAt),
                           "d 'de' MMMM, yyyy 'a las' HH:mm",
@@ -305,17 +305,17 @@ const Notificaciones = () => {
                     </div>
 
                     {/* Acciones */}
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1 ml-4 flex-shrink-0">
                       {!notificacion.leida && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             marcarComoLeida(notificacion.id);
                           }}
-                          className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-[#ec3724] hover:bg-slate-50 rounded transition-colors"
                           title="Marcar como leída"
                         >
-                          <FiCheck className="h-5 w-5" />
+                          <FiCheck className="h-4 w-4" />
                         </button>
                       )}
                       <button
@@ -323,10 +323,10 @@ const Notificaciones = () => {
                           e.stopPropagation();
                           eliminarNotificacion(notificacion.id);
                         }}
-                        className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-[#ec3724] hover:bg-slate-50 rounded transition-colors"
                         title="Eliminar"
                       >
-                        <FiTrash2 className="h-5 w-5" />
+                        <FiTrash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>

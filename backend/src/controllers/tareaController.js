@@ -1,4 +1,4 @@
-﻿const path = require('path');
+const path = require('path');
 const fs = require('fs');
 const { Op } = require('sequelize');
 const {
@@ -131,6 +131,103 @@ const listarTareas = async (req, res) => {
     const docente = await obtenerDocenteLogueado(req.usuario.id);
     if (!docente) {
       return res.status(404).json({ success: false, message: 'Perfil de docente no encontrado.' });
+    }
+
+    const checkTipo = tipo || (docente.tipoTutor === 'comunales' ? 'comunitaria' : 'laboral');
+
+    // Auto-create standard tasks for Ciclo 1 if they don't exist
+    const defaultTasks = ['Anexo A', 'Anexo B', 'Anexo C', 'Anexo D'];
+    for (const title of defaultTasks) {
+      const existe = await Tarea.findOne({
+        where: {
+          docenteId: docente.id,
+          tipoPractica: checkTipo,
+          numeroCiclo: 1,
+          titulo: title,
+        },
+      });
+
+      if (!existe) {
+        const codigoGenerado = await generarCodigoTarea(docente.id, checkTipo, 1);
+        const now = new Date();
+        const unMesDespues = new Date();
+        unMesDespues.setDate(now.getDate() + 30);
+
+        await Tarea.create({
+          docenteId: docente.id,
+          tipoPractica: checkTipo,
+          numeroCiclo: 1,
+          codigo: codigoGenerado,
+          titulo: title,
+          descripcion: `Formato oficial obligatorio: ${title}. Favor descargar, completar, firmar y subir el documento en formato PDF.`,
+          puntajeMaximo: 10.0,
+          fechaApertura: now,
+          fechaCierre: unMesDespues,
+          activa: true,
+        });
+      }
+    }
+
+    // Auto-create standard tasks for Ciclo 2 if they don't exist
+    const defaultTasksCiclo2 = ['Anexo B', 'Anexo C', 'Anexo D', 'Anexo E', 'Anexo F', 'Consolidado Final'];
+    for (const title of defaultTasksCiclo2) {
+      const existe = await Tarea.findOne({
+        where: {
+          docenteId: docente.id,
+          tipoPractica: checkTipo,
+          numeroCiclo: 2,
+          titulo: title,
+        },
+      });
+
+      if (!existe) {
+        const codigoGenerado = await generarCodigoTarea(docente.id, checkTipo, 2);
+        const now = new Date();
+        const unMesDespues = new Date();
+        unMesDespues.setDate(now.getDate() + 30);
+
+        await Tarea.create({
+          docenteId: docente.id,
+          tipoPractica: checkTipo,
+          numeroCiclo: 2,
+          codigo: codigoGenerado,
+          titulo: title,
+          descripcion: `Formato oficial obligatorio: ${title}. Favor descargar, completar, firmar y subir el documento en formato PDF.`,
+          puntajeMaximo: 10.0,
+          fechaApertura: now,
+          fechaCierre: unMesDespues,
+          activa: true,
+        });
+      }
+    }
+
+    // Auto-create standard tasks for Supletorio (Ciclo 3) if they don't exist
+    const existeSup = await Tarea.findOne({
+      where: {
+        docenteId: docente.id,
+        tipoPractica: checkTipo,
+        numeroCiclo: 3,
+        titulo: 'Entregable de Supletorio',
+      },
+    });
+
+    if (!existeSup) {
+      const now = new Date();
+      const unMesDespues = new Date();
+      unMesDespues.setDate(now.getDate() + 30);
+
+      await Tarea.create({
+        docenteId: docente.id,
+        tipoPractica: checkTipo,
+        numeroCiclo: 3,
+        codigo: `SUP-${checkTipo === 'comunitaria' ? 'COM' : 'LAB'}-01`,
+        titulo: 'Entregable de Supletorio',
+        descripcion: 'Formato obligatorio para estudiantes en supletorio. Sube aquí tu archivo firmado de evaluación.',
+        puntajeMaximo: 10.0,
+        fechaApertura: now,
+        fechaCierre: unMesDespues,
+        activa: true,
+      });
     }
 
     const where = { docenteId: docente.id };
@@ -297,13 +394,22 @@ const verEntregasDeTarea = async (req, res) => {
     });
 
     const cierre = new Date(tarea.fechaCierre);
-    const entregasConEstadoTiempo = entregas.map((e) => {
+    const { obtenerNotaFinalDesdeCiclos } = require('../utils/ciclos');
+
+    const entregasConEstadoTiempo = [];
+    for (const e of entregas) {
       const json = e.toJSON();
-      return {
+      const { ciclos: ciclosDb, notaFinal } = await obtenerNotaFinalDesdeCiclos(e.inscripcionId);
+      const c1 = ciclosDb.find(c => c.numeroCiclo === 1)?.promedioCiclo ?? null;
+      const c2 = ciclosDb.find(c => c.numeroCiclo === 2)?.promedioCiclo ?? null;
+      const c3 = ciclosDb.find(c => c.numeroCiclo === 3)?.promedioCiclo ?? null;
+
+      entregasConEstadoTiempo.push({
         ...json,
         estadoTiempo: new Date(e.fechaEntrega) <= cierre ? 'a_tiempo' : 'tarde',
-      };
-    });
+        promedios: { c1, c2, c3, notaFinal },
+      });
+    }
 
     const inscripciones = await Inscripcion.findAll({
       where: {
@@ -323,6 +429,19 @@ const verEntregasDeTarea = async (req, res) => {
     const idsConEntrega = entregas.map((e) => e.inscripcionId);
     const sinEntregar = inscripciones.filter((i) => !idsConEntrega.includes(i.id));
 
+    const sinEntregarConPromedios = [];
+    for (const i of sinEntregar) {
+      const { ciclos: ciclosDb, notaFinal } = await obtenerNotaFinalDesdeCiclos(i.id);
+      const c1 = ciclosDb.find(c => c.numeroCiclo === 1)?.promedioCiclo ?? null;
+      const c2 = ciclosDb.find(c => c.numeroCiclo === 2)?.promedioCiclo ?? null;
+      const c3 = ciclosDb.find(c => c.numeroCiclo === 3)?.promedioCiclo ?? null;
+
+      sinEntregarConPromedios.push({
+        ...i.toJSON(),
+        promedios: { c1, c2, c3, notaFinal },
+      });
+    }
+
     return res.json({
       success: true,
       data: {
@@ -331,7 +450,7 @@ const verEntregasDeTarea = async (req, res) => {
           estadoVentana: calcularEstadoVentana(tarea),
         },
         entregas: entregasConEstadoTiempo,
-        sinEntregar,
+        sinEntregar: sinEntregarConPromedios,
       },
     });
   } catch (error) {
@@ -371,12 +490,68 @@ const calificarEntrega = async (req, res) => {
       return res.status(400).json({ success: false, message: `La nota debe estar entre 0 y ${max}.` });
     }
 
-    await entrega.update({
+    const isAnexoB = entrega.tarea.titulo.toLowerCase().includes('anexo b');
+    const { subTarea } = req.body;
+
+    if (isAnexoB && !['interno', 'externo'].includes(subTarea)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Para el Anexo B, debes especificar si estás calificando el Tutor Interno o Externo.',
+      });
+    }
+
+    const updates = {};
+
+    if (isAnexoB) {
+      if (subTarea === 'interno') {
+        updates.notaInterno = notaNum;
+        updates.comentarioInterno = comentario || null;
+      } else {
+        updates.notaExterno = notaNum;
+        updates.comentarioExterno = comentario || null;
+      }
+
+      const currentNotaInterno = subTarea === 'interno' ? notaNum : (entrega.notaInterno !== null ? parseFloat(entrega.notaInterno) : null);
+      const currentNotaExterno = subTarea === 'externo' ? notaNum : (entrega.notaExterno !== null ? parseFloat(entrega.notaExterno) : null);
+
+      if (currentNotaInterno !== null && currentNotaExterno !== null) {
+        const promRaw = (currentNotaInterno + currentNotaExterno) / 2;
+        updates.nota = Math.round((promRaw + Number.EPSILON) * 100) / 100;
+        updates.estado = 'calificada';
+        updates.fechaCalificacion = new Date();
+        updates.comentarioDocente = `Calificación promediada de Tutor Interno (${currentNotaInterno}) y Tutor Externo (${currentNotaExterno}).`;
+      } else {
+        updates.nota = null;
+        updates.estado = 'pendiente';
+      }
+    } else {
+      updates.nota = notaNum;
+      updates.comentarioDocente = comentario || null;
+      updates.estado = 'calificada';
+      updates.fechaCalificacion = new Date();
+    }
+
+    let logHistorial = [];
+    try {
+      if (entrega.historial) {
+        logHistorial = JSON.parse(entrega.historial);
+      }
+    } catch (err) {
+      logHistorial = [];
+    }
+
+    logHistorial.push({
+      fecha: new Date(),
+      accion: isAnexoB 
+        ? `Calificación de Tutor ${subTarea === 'interno' ? 'Interno' : 'Externo'} por Docente`
+        : 'Calificación por Docente',
       nota: notaNum,
-      comentarioDocente: comentario || null,
-      estado: 'calificada',
-      fechaCalificacion: new Date(),
+      comentario: comentario || null,
     });
+
+    updates.historial = JSON.stringify(logHistorial);
+
+    await entrega.update(updates);
 
     const estudiante = entrega.inscripcion.estudiante;
     if (estudiante) {
@@ -424,10 +599,28 @@ const previewEntrega = async (req, res) => {
 
     if (!entrega) return res.status(404).json({ success: false, message: 'Entrega no encontrada o no autorizada.' });
 
-    const filePath = path.resolve(entrega.rutaArchivo);
+    const isAnexoB = entrega.tarea.titulo.toLowerCase().includes('anexo b');
+    const { subTarea } = req.query;
+
+    let targetPath = entrega.rutaArchivo;
+    let targetName = entrega.nombreArchivo;
+
+    if (isAnexoB && subTarea === 'interno') {
+      targetPath = entrega.rutaArchivoInterno;
+      targetName = entrega.nombreArchivoInterno;
+    } else if (isAnexoB && subTarea === 'externo') {
+      targetPath = entrega.rutaArchivoExterno;
+      targetName = entrega.nombreArchivoExterno;
+    }
+
+    if (!targetPath) {
+      return res.status(404).json({ success: false, message: 'Archivo no disponible para esta sub-tarea.' });
+    }
+
+    const filePath = path.resolve(targetPath);
     if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'Archivo no encontrado.' });
 
-    const ext = path.extname(entrega.nombreArchivo).toLowerCase();
+    const ext = path.extname(targetName).toLowerCase();
     const mimeTypes = {
       '.pdf': 'application/pdf',
       '.doc': 'application/msword',
@@ -435,7 +628,7 @@ const previewEntrega = async (req, res) => {
     };
 
     res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `inline; filename="${entrega.nombreArchivo}"`);
+    res.setHeader('Content-Disposition', `inline; filename="${targetName}"`);
     return fs.createReadStream(filePath).pipe(res);
   } catch (error) {
     console.error('Error en previewEntrega:', error);
@@ -456,10 +649,28 @@ const descargarEntrega = async (req, res) => {
 
     if (!entrega) return res.status(404).json({ success: false, message: 'Entrega no encontrada.' });
 
-    const filePath = path.resolve(entrega.rutaArchivo);
+    const isAnexoB = entrega.tarea.titulo.toLowerCase().includes('anexo b');
+    const { subTarea } = req.query;
+
+    let targetPath = entrega.rutaArchivo;
+    let targetName = entrega.nombreArchivo;
+
+    if (isAnexoB && subTarea === 'interno') {
+      targetPath = entrega.rutaArchivoInterno;
+      targetName = entrega.nombreArchivoInterno;
+    } else if (isAnexoB && subTarea === 'externo') {
+      targetPath = entrega.rutaArchivoExterno;
+      targetName = entrega.nombreArchivoExterno;
+    }
+
+    if (!targetPath) {
+      return res.status(404).json({ success: false, message: 'Archivo no disponible para esta sub-tarea.' });
+    }
+
+    const filePath = path.resolve(targetPath);
     if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'Archivo no encontrado.' });
 
-    return res.download(filePath, entrega.nombreArchivo);
+    return res.download(filePath, targetName);
   } catch (error) {
     console.error('Error en descargarEntrega:', error);
     return res.status(500).json({ success: false, message: 'Error al descargar el archivo.', error: error.message });
@@ -512,9 +723,16 @@ const libroCalificaciones = async (req, res) => {
       tipoPractica: inscripcion.tipoPractica,
     });
 
-    const cicloPromMap = new Map(resumenCiclosDb.map((c) => [c.numeroCiclo, c.promedioCiclo]));
+    const { ciclos: ciclosDb, notaFinal } = await obtenerNotaFinalDesdeCiclos(inscripcion.id);
+    const promMap = new Map(ciclosDb.map((c) => [c.numeroCiclo, c.promedioCiclo === null ? null : parseFloat(c.promedioCiclo)]));
 
-    const ciclos = CICLOS_FIJOS.map((num) => {
+    const c1Prom = promMap.get(1) ?? null;
+    const c2Prom = promMap.get(2) ?? null;
+    const promBase = (c1Prom !== null && c2Prom !== null) ? Math.round(((c1Prom + c2Prom) / 2 + Number.EPSILON) * 100) / 100 : null;
+
+    const visibleCiclos = (promBase !== null && promBase < 7.00) ? [1, 2, 3] : [1, 2];
+
+    const ciclos = visibleCiclos.map((num) => {
       const tareasCiclo = tareas.filter((t) => t.numeroCiclo === num);
 
       const tareasDetalle = tareasCiclo.map((t) => {
@@ -546,12 +764,12 @@ const libroCalificaciones = async (req, res) => {
         numeroCiclo: num,
         totalTareas: tareasCiclo.length,
         tareasCalificadas: tareasDetalle.filter((t) => t.entrega && t.entrega.nota !== null).length,
-        promedio: cicloPromMap.get(num) ?? null,
+        promedio: promMap.get(num) ?? null,
         tareas: tareasDetalle,
       };
     });
 
-    const { notaFinal } = await obtenerNotaFinalDesdeCiclos(inscripcion.id);
+    // notaFinal already obtained above
 
     return res.json({
       success: true,
@@ -610,6 +828,225 @@ const entregasPendientesRecientes = async (req, res) => {
   }
 };
 
+const entregarTareaPorDocente = async (req, res) => {
+  try {
+    const { tareaId, inscripcionId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Debes subir un archivo.' });
+    }
+
+    const docente = await obtenerDocenteLogueado(req.usuario.id);
+    if (!docente) {
+      return res.status(404).json({ success: false, message: 'Perfil de docente no encontrado.' });
+    }
+
+    const tarea = await Tarea.findOne({ where: { id: tareaId, docenteId: docente.id } });
+    if (!tarea) {
+      return res.status(404).json({ success: false, message: 'Tarea no encontrada o no autorizada.' });
+    }
+
+    const inscripcion = await Inscripcion.findOne({
+      where: { id: inscripcionId, tutorId: docente.id, activa: true },
+    });
+    if (!inscripcion) {
+      return res.status(404).json({ success: false, message: 'Inscripción del estudiante no encontrada o no autorizada.' });
+    }
+
+    const now = new Date();
+    const isAnexoF = tarea.titulo.toLowerCase().includes('anexo f');
+
+    if (isAnexoF) {
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      if (ext !== '.xls' && ext !== '.xlsx') {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (err) {
+          console.error('Error unlinking invalid file:', err);
+        }
+        return res.status(400).json({
+          success: false,
+          message: 'Para el Anexo F, el archivo debe ser obligatoriamente un formato de Excel (.xls, .xlsx).',
+        });
+      }
+    }
+
+    const [entrega, creado] = await Entrega.findOrCreate({
+      where: { tareaId: tarea.id, inscripcionId: inscripcion.id },
+      defaults: {
+        estado: isAnexoF ? 'calificada' : 'pendiente',
+        fechaEntrega: now,
+        fechaCalificacion: isAnexoF ? now : null,
+        nombreArchivo: req.file.originalname,
+        rutaArchivo: req.file.path,
+        nota: null,
+      },
+    });
+
+    if (!creado) {
+      if (entrega.estado === 'calificada' && !isAnexoF) {
+        return res.status(400).json({ success: false, message: 'Esta tarea ya fue calificada y no puede reemplazarse.' });
+      }
+      const updateData = {
+        nombreArchivo: req.file.originalname,
+        rutaArchivo: req.file.path,
+        fechaEntrega: now,
+        estado: isAnexoF ? 'calificada' : 'pendiente',
+      };
+      if (isAnexoF) {
+        updateData.fechaCalificacion = now;
+        updateData.nota = null;
+      }
+      await entrega.update(updateData);
+    }
+
+    if (isAnexoF) {
+      const { recalcularPromediosCiclos } = require('../utils/ciclos');
+      await recalcularPromediosCiclos({
+        inscripcionId: inscripcion.id,
+        docenteId: docente.id,
+        tipoPractica: inscripcion.tipoPractica,
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: 'Archivo cargado correctamente por el docente.',
+      data: entrega,
+    });
+  } catch (error) {
+    console.error('Error en entregarTareaPorDocente:', error);
+    return res.status(500).json({ success: false, message: 'Error al subir el archivo.', error: error.message });
+  }
+};
+
+const calificarSinEntrega = async (req, res) => {
+  try {
+    const { tareaId, inscripcionId } = req.params;
+    const { nota, comentario } = req.body;
+
+    if (nota === undefined || nota === null || Number.isNaN(parseFloat(nota))) {
+      return res.status(400).json({ success: false, message: 'La nota es requerida y debe ser numerica.' });
+    }
+
+    const docente = await obtenerDocenteLogueado(req.usuario.id);
+    if (!docente) return res.status(404).json({ success: false, message: 'Perfil de docente no encontrado.' });
+
+    const tarea = await Tarea.findOne({ where: { id: tareaId, docenteId: docente.id } });
+    if (!tarea) return res.status(404).json({ success: false, message: 'Tarea no encontrada o no autorizada.' });
+
+    const inscripcion = await Inscripcion.findOne({ where: { id: inscripcionId, tutorId: docente.id } });
+    if (!inscripcion) return res.status(404).json({ success: false, message: 'Inscripcion del estudiante no encontrada o no asignada a su tutoria.' });
+
+    const notaNum = parseFloat(nota);
+    const max = parseFloat(tarea.puntajeMaximo);
+    if (notaNum < 0 || notaNum > max) {
+      return res.status(400).json({ success: false, message: `La nota debe estar entre 0 y ${max}.` });
+    }
+
+    const isAnexoB = tarea.titulo.toLowerCase().includes('anexo b');
+    const { subTarea } = req.body;
+
+    if (isAnexoB && !['interno', 'externo'].includes(subTarea)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Para el Anexo B, debes especificar si estas calificando el Tutor Interno o Externo.',
+      });
+    }
+
+    const firstLog = [{
+      fecha: new Date(),
+      accion: isAnexoB 
+        ? `Calificación sin entrega de Tutor ${subTarea === 'interno' ? 'Interno' : 'Externo'} por Docente`
+        : 'Calificación sin entrega por Docente',
+      nota: notaNum,
+      comentario: comentario || 'Calificado sin entrega.',
+    }];
+
+    const [entrega, creado] = await Entrega.findOrCreate({
+      where: { tareaId, inscripcionId },
+      defaults: {
+        estado: isAnexoB ? 'pendiente' : 'calificada',
+        fechaEntrega: new Date(),
+        fechaCalificacion: isAnexoB ? null : new Date(),
+        nota: isAnexoB ? null : notaNum,
+        comentarioDocente: isAnexoB ? null : (comentario || 'Calificado sin entrega.'),
+        notaInterno: isAnexoB && subTarea === 'interno' ? notaNum : null,
+        comentarioInterno: isAnexoB && subTarea === 'interno' ? (comentario || null) : null,
+        notaExterno: isAnexoB && subTarea === 'externo' ? notaNum : null,
+        comentarioExterno: isAnexoB && subTarea === 'externo' ? (comentario || null) : null,
+        historial: JSON.stringify(firstLog),
+      },
+    });
+
+    if (!creado) {
+      const updates = {};
+      if (isAnexoB) {
+        if (subTarea === 'interno') {
+          updates.notaInterno = notaNum;
+          updates.comentarioInterno = comentario || null;
+        } else {
+          updates.notaExterno = notaNum;
+          updates.comentarioExterno = comentario || null;
+        }
+
+        const currentNotaInterno = subTarea === 'interno' ? notaNum : (entrega.notaInterno !== null ? parseFloat(entrega.notaInterno) : null);
+        const currentNotaExterno = subTarea === 'externo' ? notaNum : (entrega.notaExterno !== null ? parseFloat(entrega.notaExterno) : null);
+
+        if (currentNotaInterno !== null && currentNotaExterno !== null) {
+          const promRaw = (currentNotaInterno + currentNotaExterno) / 2;
+          updates.nota = Math.round((promRaw + Number.EPSILON) * 100) / 100;
+          updates.estado = 'calificada';
+          updates.fechaCalificacion = new Date();
+          updates.comentarioDocente = `Calificación promediada de Tutor Interno (${currentNotaInterno}) y Tutor Externo (${currentNotaExterno}).`;
+        }
+      } else {
+        updates.nota = notaNum;
+        updates.comentarioDocente = comentario || 'Calificado sin entrega.';
+        updates.estado = 'calificada';
+        updates.fechaCalificacion = new Date();
+      }
+
+      let logHistorial = [];
+      try {
+        if (entrega.historial) {
+          logHistorial = JSON.parse(entrega.historial);
+        }
+      } catch (err) {
+        logHistorial = [];
+      }
+
+      logHistorial.push({
+        fecha: new Date(),
+        accion: isAnexoB 
+          ? `Calificación sin entrega de Tutor ${subTarea === 'interno' ? 'Interno' : 'Externo'} por Docente`
+          : 'Calificación sin entrega por Docente',
+        nota: notaNum,
+        comentario: comentario || 'Calificado sin entrega.',
+      });
+
+      updates.historial = JSON.stringify(logHistorial);
+
+      await entrega.update(updates);
+    }
+
+    await recalcularPromediosCiclos({
+      inscripcionId: inscripcion.id,
+      docenteId: docente.id,
+      tipoPractica: inscripcion.tipoPractica,
+    });
+
+    return res.json({
+      success: true,
+      message: 'Estudiante calificado correctamente sin entrega.',
+      data: entrega,
+    });
+  } catch (error) {
+    console.error('Error en calificarSinEntrega:', error);
+    return res.status(500).json({ success: false, message: 'Error al calificar al estudiante.', error: error.message });
+  }
+};
+
 module.exports = {
   crearTarea,
   listarTareas,
@@ -621,5 +1058,7 @@ module.exports = {
   descargarEntrega,
   libroCalificaciones,
   entregasPendientesRecientes,
+  entregarTareaPorDocente,
+  calificarSinEntrega,
 };
 

@@ -447,44 +447,45 @@ const GestionConvenios = () => {
     }).length;
 
     return (
-      <div className="min-h-screen bg-gray-50 animate-fadeIn">
+      <div className="min-h-screen bg-slate-50 animate-fadeIn">
         <Navbar />
-        <div className="max-w-[95%] mx-auto px-4 py-8">
+        <div className="max-w-[95%] mx-auto px-4 py-6 space-y-6">
+          
           {/* Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <div>
-              <div className="flex items-center space-x-2 mb-2">
-                <span className="badge badge-success flex items-center space-x-1 py-1.5 px-3">
-                  <FiCheck className="h-4 w-4" />
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#ec3724]"></div>
+            <div className="pl-2">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-50 text-emerald-800 border border-emerald-200 tracking-wider">
+                  <FiCheck className="h-3 w-3" />
                   <span>Modo Revisor Masivo</span>
                 </span>
                 {hojasCompatibles.length > 1 && (
-                  <span className="badge badge-info py-1.5 px-3">
-                    {hojasCompatibles.length} Pestañas Compatibles
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[9px] font-black uppercase bg-blue-50 text-blue-800 border border-blue-200 tracking-wider">
+                    {hojasCompatibles.length} Pestañas Detectadas
                   </span>
                 )}
               </div>
-              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">
+              <h1 className="text-xl font-black text-slate-900 uppercase tracking-wide">
                 Previsualización e Importación Masiva
               </h1>
-              <p className="text-gray-600 text-sm max-w-2xl">
-                Hemos extraído los convenios utilizando mapeo inteligente de columnas. Puedes editar cualquier celda directamente en la cuadrícula, cambiar de pestaña o eliminar filas antes de guardarlas. Los convenios con el mismo nombre se actualizarán automáticamente.
+              <p className="text-xs font-semibold text-slate-500 mt-1 max-w-2xl leading-normal">
+                Extracción de convenios mediante mapeo inteligente de columnas. Puedes editar cualquier celda directamente en la cuadrícula, cambiar de pestaña o descartar filas. Los registros homónimos se actualizarán de forma automática.
               </p>
             </div>
             
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Selector de pestañas */}
+            <div className="flex flex-wrap items-center gap-2.5">
               {hojasCompatibles.length > 1 && (
-                <div className="flex items-center space-x-2">
-                  <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Pestaña:</label>
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Pestaña:</label>
                   <select
                     value={sheetSeleccionada}
                     onChange={(e) => handleCambiarPestaña(e.target.value)}
-                    className="select bg-white border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-primary-500 font-medium"
+                    className="border border-slate-350 rounded-lg py-1.5 px-3 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-bold text-slate-800 cursor-pointer"
                   >
                     {hojasCompatibles.map((sheet) => (
                       <option key={sheet.name} value={sheet.name}>
-                        {sheet.name} (Score: {sheet.score})
+                        {sheet.name} (Calidad: {sheet.score})
                       </option>
                     ))}
                   </select>
@@ -501,7 +502,7 @@ const GestionConvenios = () => {
                     setMensaje({ tipo: '', texto: '' });
                   }
                 }}
-                className="btn btn-secondary px-5 py-2.5"
+                className="inline-flex items-center justify-center px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all"
                 disabled={guardandoMasivo}
               >
                 Cancelar
@@ -509,20 +510,20 @@ const GestionConvenios = () => {
               
               <button
                 onClick={handleGuardarMasivo}
-                className="btn bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2 px-6 py-2.5 shadow-sm hover:shadow focus:ring-2 focus:ring-green-500 transition-all font-semibold"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all active:scale-[0.98]"
                 disabled={guardandoMasivo || datosPrevisualizacion.length === 0}
               >
                 {guardandoMasivo ? (
                   <>
-                    <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    <span>Guardando Masivamente...</span>
+                    <span>Guardando Registros...</span>
                   </>
                 ) : (
                   <>
-                    <FiSave className="h-5 w-5" />
+                    <FiSave className="h-3.5 w-3.5" />
                     <span>Guardar {datosPrevisualizacion.length} Convenios</span>
                   </>
                 )}
@@ -531,50 +532,50 @@ const GestionConvenios = () => {
           </div>
 
           {/* Tarjetas de Resumen */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
-              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
-                <FiFileText className="h-6 w-6" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+              <div className="p-2.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200">
+                <FiFileText className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Convenios en Cola</p>
-                <p className="text-2xl font-bold text-gray-800">{datosPrevisualizacion.length}</p>
+                <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider">Convenios en Cola</p>
+                <p className="text-xl font-black text-slate-900 mt-0.5">{datosPrevisualizacion.length}</p>
               </div>
             </div>
             
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
-              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
-                <FiBookOpen className="h-6 w-6" />
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+              <div className="p-2.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200">
+                <FiFileText className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Total Plazas Laborales</p>
-                <p className="text-2xl font-bold text-gray-800">{totalLaborales}</p>
+                <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider">Plazas Laborales</p>
+                <p className="text-xl font-black text-slate-900 mt-0.5">{totalLaborales}</p>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
-              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
-                <FiUsers className="h-6 w-6" />
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+              <div className="p-2.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200">
+                <FiUsers className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Total Plazas Comunitarias</p>
-                <p className="text-2xl font-bold text-gray-800">{totalComunitarias}</p>
+                <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider">Plazas Comunitarias</p>
+                <p className="text-xl font-black text-slate-900 mt-0.5">{totalComunitarias}</p>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
-              <div className={`p-3 rounded-lg ${(repetidosEnBD > 0 || duplicadosEnExcel > 0) ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-400'}`}>
-                <FiAlertTriangle className="h-6 w-6 animate-pulse" />
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+              <div className={`p-2.5 rounded-lg border ${(repetidosEnBD > 0 || duplicadosEnExcel > 0) ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-slate-50 text-slate-400 border-slate-200'}`}>
+                <FiAlertTriangle className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Existentes / Duplicados</p>
-                <p className="text-xl font-bold text-gray-805">
-                  <span className={repetidosEnBD > 0 ? "text-amber-600 font-extrabold" : "text-gray-800"}>
+                <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider">Existentes / Duplicados</p>
+                <p className="text-lg font-black text-slate-900 mt-0.5">
+                  <span className={repetidosEnBD > 0 ? "text-amber-600 font-black" : "text-slate-900"}>
                     {repetidosEnBD}
                   </span>
-                  <span className="text-xs font-normal text-gray-400 ml-1">en BD</span>
+                  <span className="text-[10px] font-semibold text-slate-500 ml-1">en BD</span>
                   {duplicadosEnExcel > 0 && (
-                    <span className="text-xs font-semibold text-orange-600 ml-2">
+                    <span className="text-[10px] font-black text-orange-600 ml-2">
                       ({duplicadosEnExcel} en Excel)
                     </span>
                   )}
@@ -583,48 +584,48 @@ const GestionConvenios = () => {
             </div>
           </div>
 
-          {/* Mensaje de alerta interna */}
+          {/* Mensajes de Alerta */}
           {mensaje.texto && (
-            <div className={`alert ${mensaje.tipo === 'success' ? 'alert-success' : 'alert-error'} flex items-center space-x-2 mb-6`}>
-              <FiAlertCircle className="h-5 w-5 flex-shrink-0" />
-              <span className="text-sm font-medium">{mensaje.texto}</span>
+            <div className={`border rounded-lg p-4 flex items-center gap-2 text-xs font-bold leading-relaxed ${mensaje.tipo === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-150 text-[#ec3724]'}`}>
+              <FiAlertCircle className="h-4.5 w-4.5 flex-shrink-0" />
+              <span>{mensaje.texto}</span>
             </div>
           )}
 
           {/* Tabla Cuadrícula Editable Premium */}
-          <div className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto max-h-[60vh] scrollbar-thin">
-              <table className="w-full text-left border-collapse">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto max-h-[60vh]">
+              <table className="w-full text-left border-collapse table-auto">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    <th className="py-4 px-4 sticky left-0 bg-gray-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)] z-10 w-[20%]">Empresa *</th>
-                    <th className="py-4 px-4 w-[15%]">Área *</th>
-                    <th className="py-4 px-4 text-center w-[8%]">Plazas Lab.</th>
-                    <th className="py-4 px-4 text-center w-[8%]">Plazas Com.</th>
-                    <th className="py-4 px-4 w-[15%]">Contacto / Tutor</th>
-                    <th className="py-4 px-4 w-[10%]">Teléfono</th>
-                    <th className="py-4 px-4 w-[12%]">Horario</th>
-                    <th className="py-4 px-4 w-[25%]">Actividades</th>
-                    <th className="py-4 px-4 text-center w-[5%] sticky right-0 bg-gray-50 shadow-[-2px_0_5px_rgba(0,0,0,0.05)] z-10">Eliminar</th>
+                  <tr className="bg-slate-100 border-b border-slate-200 text-[9px] font-black text-slate-550 uppercase tracking-wider divide-x divide-slate-200">
+                    <th className="py-3 px-3.5 sticky left-0 bg-slate-100 z-10 w-[240px]">Empresa *</th>
+                    <th className="py-3 px-3.5 w-[180px]">Área de Especialidad *</th>
+                    <th className="py-3 px-3.5 text-center w-[90px]">Plazas Lab.</th>
+                    <th className="py-3 px-3.5 text-center w-[90px]">Plazas Com.</th>
+                    <th className="py-3 px-3.5 w-[180px]">Contacto / Tutor</th>
+                    <th className="py-3 px-3.5 w-[120px]">Teléfono</th>
+                    <th className="py-3 px-3.5 w-[120px]">Horario</th>
+                    <th className="py-3 px-3.5 w-[280px]">Actividades del Convenio</th>
+                    <th className="py-3 px-3.5 text-center w-[70px] sticky right-0 bg-slate-100 z-10">Eliminar</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 text-sm">
+                <tbody className="divide-y divide-slate-200 text-[11px] font-semibold text-slate-700">
                   {datosPrevisualizacion.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="text-center py-12 text-gray-500 font-medium bg-gray-50">
-                        No hay registros en esta pestaña. Prueba seleccionando otra pestaña arriba.
+                      <td colSpan="9" className="text-center py-12 text-slate-500 font-bold bg-slate-50/50">
+                        No hay registros en esta pestaña. Selecciona otra pestaña en el menú superior.
                       </td>
                     </tr>
                   ) : (
                     datosPrevisualizacion.map((row) => (
-                      <tr key={row.id} className="hover:bg-indigo-50/20 transition-colors">
+                      <tr key={row.id} className="hover:bg-slate-50/50 transition-colors divide-x divide-slate-100">
                         {/* Empresa */}
-                        <td className="p-2 sticky left-0 bg-white hover:bg-indigo-50/20 shadow-[2px_0_5px_rgba(0,0,0,0.02)] z-10">
+                        <td className="p-2.5 sticky left-0 bg-white hover:bg-slate-50 z-10">
                           <input
                             type="text"
                             value={row.nombreEmpresa}
                             onChange={(e) => handleCellChange(row.id, 'nombreEmpresa', e.target.value)}
-                            className={`w-full bg-transparent border-0 focus:ring-2 focus:ring-primary-500 rounded px-2 py-1.5 text-xs text-gray-900 border-b border-dashed ${!row.nombreEmpresa.trim() ? 'border-red-400 bg-red-50' : 'border-gray-200'}`}
+                            className={`w-full bg-transparent border-b border-dashed focus:outline-none focus:border-[#ec3724] px-1 py-1 text-[11px] font-black text-slate-900 uppercase ${!row.nombreEmpresa.trim() ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
                             placeholder="Nombre de la Empresa"
                           />
                           {(() => {
@@ -634,16 +635,14 @@ const GestionConvenios = () => {
                             const yaExisteEnExcel = datosPrevisualizacion.filter(r => r.nombreEmpresa.trim().toLowerCase() === cleanNombre).length > 1;
                             
                             return (
-                              <div className="flex flex-wrap gap-1 mt-1 px-1">
+                              <div className="flex flex-wrap gap-1.5 mt-1 px-1">
                                 {yaExisteEnBD && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200" title="Este convenio ya existe en el sistema. Se actualizarán sus cupos y datos de contacto.">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider" title="Este convenio ya existe en el sistema. Se actualizarán sus cupos y datos de contacto.">
                                     Actualizar
                                   </span>
                                 )}
                                 {yaExisteEnExcel && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-50 text-orange-700 border border-orange-200" title="Esta empresa se repite más de una vez en el archivo Excel cargado.">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-orange-50 text-orange-700 border border-orange-200 uppercase tracking-wider" title="Esta empresa se repite más de una vez en el archivo Excel cargado.">
                                     Duplicado Excel
                                   </span>
                                 )}
@@ -653,91 +652,91 @@ const GestionConvenios = () => {
                         </td>
                         
                         {/* Area */}
-                        <td className="p-2">
+                        <td className="p-2.5">
                           <select
                             value={row.area}
                             onChange={(e) => handleCellChange(row.id, 'area', e.target.value)}
-                            className={`w-full bg-transparent border-0 focus:ring-2 focus:ring-primary-500 rounded px-2 py-1.5 text-xs font-semibold text-gray-800 border-b border-dashed ${!row.area.trim() ? 'border-red-400 bg-red-50' : 'border-gray-200'}`}
+                            className={`w-full bg-transparent border-b border-dashed focus:outline-none focus:border-[#ec3724] px-1 py-1 text-[11px] font-bold text-slate-800 cursor-pointer ${!row.area.trim() ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
                           >
-                            <option value="Desarrollo de Software">💼 Desarrollo de Software</option>
-                            <option value="Redes y Telecomunicaciones">📡 Redes y Telecomunicaciones</option>
-                            <option value="Ciberseguridad">🛡️ Ciberseguridad</option>
-                            <option value="Base de Datos">🗄️ Base de Datos</option>
-                            <option value="Soporte Técnico">🛠️ Soporte Técnico</option>
+                            <option value="Desarrollo de Software">Desarrollo de Software</option>
+                            <option value="Redes y Telecomunicaciones">Redes y Telecomunicaciones</option>
+                            <option value="Ciberseguridad">Ciberseguridad</option>
+                            <option value="Base de Datos">Base de Datos</option>
+                            <option value="Soporte Técnico">Soporte Técnico</option>
                           </select>
                         </td>
 
                         {/* Plazas Laborales */}
-                        <td className="p-2 text-center">
+                        <td className="p-2.5 text-center">
                           <input
                             type="number"
                             min="0"
                             value={row.cuposLaboralesTotales}
                             onChange={(e) => handleCellChange(row.id, 'cuposLaboralesTotales', parseInt(e.target.value) || 0)}
-                            className="w-16 bg-transparent border-0 focus:ring-2 focus:ring-primary-500 rounded px-2 py-1.5 text-xs text-gray-900 text-center border-b border-dashed border-gray-200 font-bold"
+                            className="w-14 bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-[#ec3724] py-1 text-[11px] text-center font-black text-slate-900"
                           />
                         </td>
 
                         {/* Plazas Comunitarias */}
-                        <td className="p-2 text-center">
+                        <td className="p-2.5 text-center">
                           <input
                             type="number"
                             min="0"
                             value={row.cuposComunitariosTotales}
                             onChange={(e) => handleCellChange(row.id, 'cuposComunitariosTotales', parseInt(e.target.value) || 0)}
-                            className="w-16 bg-transparent border-0 focus:ring-2 focus:ring-primary-500 rounded px-2 py-1.5 text-xs text-gray-900 text-center border-b border-dashed border-gray-200 font-bold"
+                            className="w-14 bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-[#ec3724] py-1 text-[11px] text-center font-black text-slate-900"
                           />
                         </td>
 
                         {/* Contacto */}
-                        <td className="p-2">
+                        <td className="p-2.5">
                           <input
                             type="text"
                             value={row.contacto}
                             onChange={(e) => handleCellChange(row.id, 'contacto', e.target.value)}
-                            className="w-full bg-transparent border-0 focus:ring-2 focus:ring-primary-500 rounded px-2 py-1.5 text-xs text-gray-900 border-b border-dashed border-gray-200"
-                            placeholder="Nombre del Tutor/Contacto"
+                            className="w-full bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-[#ec3724] px-1 py-1 text-[11px] text-slate-900"
+                            placeholder="Tutor/Representante"
                           />
                         </td>
 
                         {/* Telefono */}
-                        <td className="p-2">
+                        <td className="p-2.5">
                           <input
                             type="text"
                             value={row.telefono}
                             onChange={(e) => handleCellChange(row.id, 'telefono', e.target.value)}
-                            className="w-full bg-transparent border-0 focus:ring-2 focus:ring-primary-500 rounded px-2 py-1.5 text-xs text-gray-900 border-b border-dashed border-gray-200"
-                            placeholder="Ej: 0992669635"
+                            className="w-full bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-[#ec3724] px-1 py-1 text-[11px] text-slate-900"
+                            placeholder="Celular/Convencional"
                           />
                         </td>
 
                         {/* Horario */}
-                        <td className="p-2">
+                        <td className="p-2.5">
                           <input
                             type="text"
                             value={row.horario}
                             onChange={(e) => handleCellChange(row.id, 'horario', e.target.value)}
-                            className="w-full bg-transparent border-0 focus:ring-2 focus:ring-primary-500 rounded px-2 py-1.5 text-xs text-gray-900 border-b border-dashed border-gray-200"
-                            placeholder="Ej: A convenir"
+                            className="w-full bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-[#ec3724] px-1 py-1 text-[11px] text-slate-900"
+                            placeholder="Ej. A convenir"
                           />
                         </td>
 
                         {/* Actividades */}
-                        <td className="p-2">
+                        <td className="p-2.5">
                           <textarea
                             rows="2"
                             value={row.actividades}
                             onChange={(e) => handleCellChange(row.id, 'actividades', e.target.value)}
-                            className="w-full bg-transparent border-0 focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 text-xs text-gray-700 border-b border-dashed border-gray-200 resize-y min-h-[45px] leading-snug"
-                            placeholder="Detalle de actividades..."
+                            className="w-full bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-[#ec3724] px-1 py-1 text-[10px] text-slate-650 resize-y min-h-[45px] leading-snug"
+                            placeholder="Actividades académicas asignadas..."
                           />
                         </td>
 
                         {/* Boton Eliminar */}
-                        <td className="p-2 text-center sticky right-0 bg-white shadow-[-2px_0_5px_rgba(0,0,0,0.02)] z-10">
+                        <td className="p-2.5 text-center sticky right-0 bg-white hover:bg-slate-50 z-10">
                           <button
                             onClick={() => handleEliminarFilaPrevisualizacion(row.id)}
-                            className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center"
+                            className="text-[#ec3724] hover:text-[#d32010] p-1.5 hover:bg-rose-50 rounded-lg transition-colors inline-flex items-center border border-transparent hover:border-rose-200"
                           >
                             <FiTrash2 className="h-4 w-4" />
                           </button>
@@ -749,9 +748,9 @@ const GestionConvenios = () => {
               </table>
             </div>
             
-            <div className="bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-between text-xs text-gray-500 font-medium">
+            <div className="bg-slate-50 border-t border-slate-200 px-5 py-3.5 flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase tracking-wider">
               <span>* Indica campos requeridos obligatorios.</span>
-              <span>Total de filas en cuadrícula: {datosPrevisualizacion.length}</span>
+              <span>Registros en esta pestaña: {datosPrevisualizacion.length}</span>
             </div>
           </div>
         </div>
@@ -759,23 +758,26 @@ const GestionConvenios = () => {
     );
   }
 
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50 animate-fadeIn">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        
+        {/* Encabezado */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white rounded-xl p-6 shadow-sm border border-slate-200 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#ec3724]"></div>
+          <div className="pl-2">
+            <h1 className="text-xl font-black text-slate-900 uppercase tracking-wide">
               Gestión de Convenios
             </h1>
-            <p className="text-gray-600">
-              Administra los convenios disponibles para prácticas preprofesionales
+            <p className="text-xs font-semibold text-slate-500 mt-1">
+              Administra y controla los convenios de la institución para prácticas preprofesionales.
             </p>
           </div>
-          <div className="flex items-center space-x-3">
-            <label className="btn flex items-center space-x-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all">
-              <FiUpload className="h-5 w-5" />
+          <div className="flex items-center gap-2">
+            <label className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all cursor-pointer">
+              <FiUpload className="h-4 w-4" />
               <span>Importar Excel</span>
               <input
                 type="file"
@@ -786,9 +788,9 @@ const GestionConvenios = () => {
             </label>
             <button
               onClick={() => abrirModal()}
-              className="btn btn-primary flex items-center space-x-2 shadow-sm"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#ec3724] text-white hover:bg-[#d32010] rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all active:scale-[0.98]"
             >
-              <FiPlus className="h-5 w-5" />
+              <FiPlus className="h-4 w-4" />
               <span>Nuevo Convenio</span>
             </button>
           </div>
@@ -796,26 +798,22 @@ const GestionConvenios = () => {
 
         {/* Mensaje */}
         {mensaje.texto && (
-          <div
-            className={`alert ${
-              mensaje.tipo === 'success' ? 'alert-success' : 'alert-error'
-            } flex items-center space-x-2 mb-6`}
-          >
-            <FiAlertCircle className="h-5 w-5" />
+          <div className={`border rounded-lg p-4 flex items-center gap-2 text-xs font-bold leading-relaxed ${mensaje.tipo === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-150 text-[#ec3724]'}`}>
+            <FiAlertCircle className="h-4.5 w-4.5 flex-shrink-0" />
             <span>{mensaje.texto}</span>
           </div>
         )}
 
         {/* Barra de búsqueda */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+          <div className="relative w-full">
+            <FiSearch className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-455" />
             <input
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por empresa o área..."
-              className="input pl-10"
+              placeholder="Buscar convenio por nombre de empresa o área..."
+              className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
             />
           </div>
         </div>
@@ -823,111 +821,119 @@ const GestionConvenios = () => {
         {/* Lista de convenios */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {conveniosFiltrados.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-gray-600">
+            <div className="col-span-full bg-white rounded-xl p-12 text-center border border-slate-200 shadow-sm">
+              <FiFileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-1">No se encontraron convenios</h3>
+              <p className="text-[11px] font-semibold text-slate-500">
                 {busqueda
-                  ? 'No se encontraron convenios con ese criterio'
-                  : 'No hay convenios registrados'}
+                  ? 'Intenta ajustar los criterios de búsqueda en el filtro.'
+                  : 'No hay convenios registrados en la plataforma.'}
               </p>
             </div>
           ) : (
             conveniosFiltrados.map((convenio) => (
               <div
                 key={convenio.id}
-                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6"
+                className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all p-5 flex flex-col justify-between space-y-4"
               >
                 {/* Header del card */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">
-                      {convenio.nombreEmpresa}
-                    </h3>
-                    <p className="text-sm text-gray-600">{convenio.area}</p>
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wide truncate max-w-[200px]" title={convenio.nombreEmpresa}>
+                        {convenio.nombreEmpresa}
+                      </h3>
+                      <span className="inline-flex px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-slate-100 text-slate-655 border border-slate-200 mt-1">
+                        {convenio.area}
+                      </span>
+                    </div>
+                    <span
+                      className={`inline-flex px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border flex-shrink-0 ${
+                        convenio.activo
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                          : 'bg-slate-50 border-slate-200 text-slate-450'
+                      }`}
+                    >
+                      {convenio.activo ? 'Activo' : 'Inactivo'}
+                    </span>
                   </div>
-                  <span
-                    className={`badge ${
-                      convenio.activo ? 'badge-success' : 'badge-gray'
-                    }`}
-                  >
-                    {convenio.activo ? 'Activo' : 'Inactivo'}
-                  </span>
-                </div>
 
-                {/* Detalles del Convenio */}
-                <div className="space-y-2 mb-4 text-sm text-gray-600 border-t pt-3">
-                  {convenio.contacto && (
-                    <div className="flex items-center space-x-2">
-                      <FiUser className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <span className="truncate" title={convenio.contacto}>
-                        <strong>Contacto:</strong> {convenio.contacto}
-                      </span>
-                    </div>
-                  )}
-                  {convenio.telefono && (
-                    <div className="flex items-center space-x-2">
-                      <FiPhone className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <span>
-                        <strong>Teléfono:</strong> {convenio.telefono}
-                      </span>
-                    </div>
-                  )}
-                  {convenio.horario && (
-                    <div className="flex items-center space-x-2">
-                      <FiClock className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <span className="truncate" title={convenio.horario}>
-                        <strong>Horario:</strong> {convenio.horario}
-                      </span>
-                    </div>
-                  )}
-                  {convenio.actividades && (
-                    <div className="flex items-start space-x-2 pt-1">
-                      <FiBookOpen className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                      <span className="line-clamp-2 text-xs text-gray-500 bg-gray-50 p-1.5 rounded w-full" title={convenio.actividades}>
-                        {convenio.actividades}
-                      </span>
-                    </div>
-                  )}
+                  {/* Detalles del Convenio */}
+                  <div className="space-y-2 mt-4 pt-3 border-t border-slate-100 text-[11px] font-semibold text-slate-600">
+                    {convenio.contacto && (
+                      <div className="flex items-center gap-2">
+                        <FiUser className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                        <span className="truncate" title={convenio.contacto}>
+                          <strong className="text-slate-500 font-bold uppercase text-[9px] mr-1">Contacto:</strong> {convenio.contacto}
+                        </span>
+                      </div>
+                    )}
+                    {convenio.telefono && (
+                      <div className="flex items-center gap-2">
+                        <FiPhone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                        <span>
+                          <strong className="text-slate-500 font-bold uppercase text-[9px] mr-1">Teléfono:</strong> {convenio.telefono}
+                        </span>
+                      </div>
+                    )}
+                    {convenio.horario && (
+                      <div className="flex items-center gap-2">
+                        <FiClock className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                        <span className="truncate" title={convenio.horario}>
+                          <strong className="text-slate-500 font-bold uppercase text-[9px] mr-1">Horario:</strong> {convenio.horario}
+                        </span>
+                      </div>
+                    )}
+                    {convenio.actividades && (
+                      <div className="flex items-start gap-2 pt-1.5">
+                        <FiBookOpen className="h-3.5 w-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+                        <div className="text-[10px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-150 leading-relaxed font-medium w-full line-clamp-3" title={convenio.actividades}>
+                          {convenio.actividades}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Desglose de Cupos */}
-                <div className="space-y-3 border-t pt-3 mb-4">
-                  <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
-                    <span>Desglose de Plazas:</span>
-                    <span className="text-gray-500">
+                <div className="space-y-2.5 pt-3 border-t border-slate-100">
+                  <div className="flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                    <span>Distribución de Plazas</span>
+                    <span className="text-slate-800">
                       Total: {convenio.cuposOcupados} / {convenio.cuposTotales}
                     </span>
                   </div>
 
                   {/* Cupos Laborales */}
                   <div>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-gray-600 font-medium">💼 Prácticas Laborales</span>
-                      <span className="font-semibold text-gray-800">
+                    <div className="flex items-center justify-between text-[10px] mb-1 font-semibold">
+                      <span className="text-slate-500 uppercase tracking-wider text-[9px]">Prácticas Laborales</span>
+                      <span className="font-bold text-slate-800">
                         {convenio.cuposLaboralesOcupados} / {convenio.cuposLaboralesTotales}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 border border-slate-200 overflow-hidden">
                       <div
                         className={`h-1.5 rounded-full transition-all ${
                           porcentajeOcupacion(
                             convenio.cuposLaboralesOcupados,
                             convenio.cuposLaboralesTotales
                           ) >= 100
-                            ? 'bg-red-500'
+                            ? 'bg-[#ec3724]'
                             : porcentajeOcupacion(
                                 convenio.cuposLaboralesOcupados,
                                 convenio.cuposLaboralesTotales
                               ) >= 80
-                            ? 'bg-yellow-500'
-                            : 'bg-indigo-600'
+                            ? 'bg-amber-500'
+                            : 'bg-slate-655'
                         }`}
                         style={{
                           width: `${
                             convenio.cuposLaboralesTotales > 0
-                              ? porcentajeOcupacion(
+                              ? Math.min(porcentajeOcupacion(
                                   convenio.cuposLaboralesOcupados,
                                   convenio.cuposLaboralesTotales
-                                )
+                                ), 100)
                               : 0
                           }%`,
                         }}
@@ -937,34 +943,34 @@ const GestionConvenios = () => {
 
                   {/* Cupos Comunitarios */}
                   <div>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-gray-600 font-medium">🤝 Prácticas Comunitarias</span>
-                      <span className="font-semibold text-gray-800">
+                    <div className="flex items-center justify-between text-[10px] mb-1 font-semibold">
+                      <span className="text-slate-500 uppercase tracking-wider text-[9px]">Prácticas Comunitarias</span>
+                      <span className="font-bold text-slate-800">
                         {convenio.cuposComunitariosOcupados} / {convenio.cuposComunitariosTotales}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 border border-slate-200 overflow-hidden">
                       <div
                         className={`h-1.5 rounded-full transition-all ${
                           porcentajeOcupacion(
                             convenio.cuposComunitariosOcupados,
                             convenio.cuposComunitariosTotales
                           ) >= 100
-                            ? 'bg-red-500'
+                            ? 'bg-[#ec3724]'
                             : porcentajeOcupacion(
                                 convenio.cuposComunitariosOcupados,
                                 convenio.cuposComunitariosTotales
                               ) >= 80
-                            ? 'bg-yellow-500'
+                            ? 'bg-amber-500'
                             : 'bg-emerald-600'
                         }`}
                         style={{
                           width: `${
                             convenio.cuposComunitariosTotales > 0
-                              ? porcentajeOcupacion(
+                              ? Math.min(porcentajeOcupacion(
                                   convenio.cuposComunitariosOcupados,
                                   convenio.cuposComunitariosTotales
-                                )
+                                ), 100)
                               : 0
                           }%`,
                         }}
@@ -974,30 +980,32 @@ const GestionConvenios = () => {
                 </div>
 
                 {/* Acciones */}
-                <div className="flex items-center space-x-2 pt-4 border-t">
-                  <button
-                    onClick={() => abrirModal(convenio)}
-                    className="flex-1 btn btn-secondary flex items-center justify-center space-x-2"
-                  >
-                    <FiEdit className="h-4 w-4" />
-                    <span>Editar</span>
-                  </button>
-                  <button
-                    onClick={() =>
-                      eliminarConvenio(convenio.id, convenio.nombreEmpresa)
-                    }
-                    className="btn btn-danger flex items-center space-x-2"
-                    disabled={convenio.cuposOcupados > 0}
-                  >
-                    <FiTrash2 className="h-4 w-4" />
-                  </button>
+                <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => abrirModal(convenio)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white text-slate-700 hover:bg-slate-50 border border-slate-250 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all"
+                    >
+                      <FiEdit className="h-3.5 w-3.5" />
+                      <span>Editar</span>
+                    </button>
+                    <button
+                      onClick={() =>
+                        eliminarConvenio(convenio.id, convenio.nombreEmpresa)
+                      }
+                      className="inline-flex items-center justify-center p-1.5 bg-white text-[#ec3724] hover:bg-rose-50 border border-slate-250 hover:border-rose-200 rounded-lg transition-all"
+                      disabled={convenio.cuposOcupados > 0}
+                      title={convenio.cuposOcupados > 0 ? 'No se puede eliminar (tiene estudiantes asignados)' : 'Eliminar Convenio'}
+                    >
+                      <FiTrash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {convenio.cuposOcupados > 0 && (
+                    <p className="text-[9px] font-black uppercase text-slate-400 text-center tracking-wider bg-slate-50 py-1 rounded border border-slate-200">
+                      No se puede eliminar (estudiantes asignados)
+                    </p>
+                  )}
                 </div>
-
-                {convenio.cuposOcupados > 0 && (
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    No se puede eliminar (tiene estudiantes asignados)
-                  </p>
-                )}
               </div>
             ))
           )}
@@ -1111,210 +1119,202 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-white rounded-xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-200 animate-scale-up">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 border-b pb-3">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {convenio ? 'Editar Convenio' : 'Nuevo Convenio'}
+        <div className="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center relative">
+          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#ec3724]"></div>
+          <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-2">
+            {convenio ? 'Editar Convenio Institucional' : 'Nuevo Convenio Institucional'}
           </h2>
           <button
             onClick={cerrar}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-slate-400 hover:text-slate-600 font-bold"
           >
-            <FiX className="h-6 w-6" />
+            Cerrar
           </button>
         </div>
 
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Nombre de la empresa */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nombre de la Empresa *
-              </label>
+        <form onSubmit={handleSubmit}>
+          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* Nombre de la empresa */}
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                  Nombre de la Empresa *
+                </label>
+                <input
+                  type="text"
+                  value={formData.nombreEmpresa}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nombreEmpresa: e.target.value })
+                  }
+                  className={`w-full border rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800 ${errors.nombreEmpresa ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                  placeholder="Ej. Tech Solutions S.A."
+                />
+                {errors.nombreEmpresa && (
+                  <p className="text-[10px] text-[#ec3724] font-bold mt-1.5">{errors.nombreEmpresa}</p>
+                )}
+              </div>
+
+              {/* Área */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                  Área de Especialidad *
+                </label>
+                <input
+                  type="text"
+                  value={formData.area}
+                  onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                  className={`w-full border rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800 ${errors.area ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                  placeholder="Ej. Desarrollo de Software"
+                />
+                {errors.area && (
+                  <p className="text-[10px] text-[#ec3724] font-bold mt-1.5">{errors.area}</p>
+                )}
+              </div>
+
+              {/* Horario */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                  Horario
+                </label>
+                <input
+                  type="text"
+                  value={formData.horario}
+                  onChange={(e) => setFormData({ ...formData, horario: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
+                  placeholder="Ej. A convenir / 08:00 - 12:00"
+                />
+              </div>
+
+              {/* Contacto */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                  Contacto / Tutor
+                </label>
+                <input
+                  type="text"
+                  value={formData.contacto}
+                  onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
+                  placeholder="Ej. Ing. Luis Miguel Santillán"
+                />
+              </div>
+
+              {/* Teléfono */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                  Teléfono
+                </label>
+                <input
+                  type="text"
+                  value={formData.telefono}
+                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
+                  placeholder="Ej. 099 266 9635"
+                />
+              </div>
+
+              {/* Cupos Laborales */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                  Plazas Laborales *
+                </label>
+                <input
+                  type="number"
+                  value={formData.cuposLaboralesTotales}
+                  onChange={(e) =>
+                    setFormData({ ...formData, cuposLaboralesTotales: parseInt(e.target.value) || 0 })
+                  }
+                  min="0"
+                  className={`w-full border rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-bold text-slate-800 ${errors.cuposLaboralesTotales ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                />
+                {errors.cuposLaboralesTotales && (
+                  <p className="text-[10px] text-[#ec3724] font-bold mt-1.5">{errors.cuposLaboralesTotales}</p>
+                )}
+              </div>
+
+              {/* Cupos Comunitarios */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                  Plazas Comunitarias *
+                </label>
+                <input
+                  type="number"
+                  value={formData.cuposComunitariosTotales}
+                  onChange={(e) =>
+                    setFormData({ ...formData, cuposComunitariosTotales: parseInt(e.target.value) || 0 })
+                  }
+                  min="0"
+                  className={`w-full border rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-bold text-slate-800 ${errors.cuposComunitariosTotales ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                />
+                {errors.cuposComunitariosTotales && (
+                  <p className="text-[10px] text-[#ec3724] font-bold mt-1.5">{errors.cuposComunitariosTotales}</p>
+                )}
+              </div>
+
+              {/* Actividades */}
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                  Actividades
+                </label>
+                <textarea
+                  value={formData.actividades}
+                  onChange={(e) => setFormData({ ...formData, actividades: e.target.value })}
+                  rows="3"
+                  className="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
+                  placeholder="Ej. Desarrollo de software, Administración de bases de datos, Soporte técnico..."
+                />
+              </div>
+            </div>
+
+            {/* Estado */}
+            <div className="flex items-center gap-2 pt-3 border-t border-slate-200">
               <input
-                type="text"
-                value={formData.nombreEmpresa}
+                type="checkbox"
+                id="activo"
+                checked={formData.activo}
                 onChange={(e) =>
-                  setFormData({ ...formData, nombreEmpresa: e.target.value })
+                  setFormData({ ...formData, activo: e.target.checked })
                 }
-                className={`input ${errors.nombreEmpresa ? 'input-error' : ''}`}
-                placeholder="Ej: Tech Solutions S.A."
+                className="h-4 w-4 text-[#ec3724] border-slate-350 focus:ring-[#ec3724] rounded"
               />
-              {errors.nombreEmpresa && (
-                <p className="text-sm text-red-600 mt-1">{errors.nombreEmpresa}</p>
-              )}
-            </div>
-
-            {/* Área */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Área *
+              <label htmlFor="activo" className="text-xs text-slate-850 font-black uppercase tracking-wider cursor-pointer">
+                Convenio activo y visible
               </label>
-              <input
-                type="text"
-                value={formData.area}
-                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                className={`input ${errors.area ? 'input-error' : ''}`}
-                placeholder="Ej: Desarrollo de Software"
-              />
-              {errors.area && (
-                <p className="text-sm text-red-600 mt-1">{errors.area}</p>
-              )}
             </div>
-
-            {/* Horario */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Horario
-              </label>
-              <input
-                type="text"
-                value={formData.horario}
-                onChange={(e) => setFormData({ ...formData, horario: e.target.value })}
-                className="input"
-                placeholder="Ej: A convenir / 08:00 - 12:00"
-              />
-            </div>
-
-            {/* Contacto */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contacto / Tutor
-              </label>
-              <input
-                type="text"
-                value={formData.contacto}
-                onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
-                className="input"
-                placeholder="Ej: Ing. Luis Miguel Santillán"
-              />
-            </div>
-
-            {/* Teléfono */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Teléfono
-              </label>
-              <input
-                type="text"
-                value={formData.telefono}
-                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                className="input"
-                placeholder="Ej: 099 266 9635"
-              />
-            </div>
-
-            {/* Cupos Laborales */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Plazas Laborales *
-              </label>
-              <input
-                type="number"
-                value={formData.cuposLaboralesTotales}
-                onChange={(e) =>
-                  setFormData({ ...formData, cuposLaboralesTotales: parseInt(e.target.value) || 0 })
-                }
-                min="0"
-                className={`input ${errors.cuposLaboralesTotales ? 'input-error' : ''}`}
-              />
-              {errors.cuposLaboralesTotales && (
-                <p className="text-sm text-red-600 mt-1">{errors.cuposLaboralesTotales}</p>
-              )}
-            </div>
-
-            {/* Cupos Comunitarios */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Plazas Comunitarias *
-              </label>
-              <input
-                type="number"
-                value={formData.cuposComunitariosTotales}
-                onChange={(e) =>
-                  setFormData({ ...formData, cuposComunitariosTotales: parseInt(e.target.value) || 0 })
-                }
-                min="0"
-                className={`input ${errors.cuposComunitariosTotales ? 'input-error' : ''}`}
-              />
-              {errors.cuposComunitariosTotales && (
-                <p className="text-sm text-red-600 mt-1">{errors.cuposComunitariosTotales}</p>
-              )}
-            </div>
-
-            {/* Actividades */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Actividades
-              </label>
-              <textarea
-                value={formData.actividades}
-                onChange={(e) => setFormData({ ...formData, actividades: e.target.value })}
-                rows="3"
-                className="input py-2"
-                placeholder="Ej: Desarrollo de Software, Administración de bases de datos, Soporte técnico..."
-              />
-            </div>
-          </div>
-
-          {/* Estado */}
-          <div className="flex items-center space-x-2 pt-2 border-t mt-4">
-            <input
-              type="checkbox"
-              id="activo"
-              checked={formData.activo}
-              onChange={(e) =>
-                setFormData({ ...formData, activo: e.target.checked })
-              }
-              className="h-4 w-4 text-primary-600 rounded focus:ring-primary-500"
-            />
-            <label htmlFor="activo" className="text-sm text-gray-700 font-semibold">
-              Convenio activo
-            </label>
           </div>
 
           {/* Botones */}
-          <div className="flex items-center space-x-3 pt-4 border-t">
+          <div className="p-5 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
             <button
               type="button"
               onClick={cerrar}
-              className="flex-1 btn btn-secondary"
+              className="inline-flex items-center justify-center px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all"
               disabled={guardando}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex-1 btn btn-primary flex items-center justify-center space-x-2"
+              className="inline-flex items-center justify-center px-5 py-2.5 bg-[#ec3724] text-white hover:bg-[#d32010] rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all active:scale-[0.98]"
               disabled={guardando}
             >
               {guardando ? (
-                <>
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
+                <span className="flex items-center">
+                  <svg className="animate-spin h-3.5 w-3.5 mr-2 text-white" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  <span>Guardando...</span>
-                </>
+                  Guardando...
+                </span>
               ) : (
                 <>
-                  <FiSave className="h-5 w-5" />
-                  <span>Guardar</span>
+                  <FiSave className="h-3.5 w-3.5 mr-1.5" />
+                  <span>Guardar Convenio</span>
                 </>
               )}
             </button>
@@ -1325,4 +1325,4 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
   );
 };
 
-export default GestionConvenios;
+export default GestionConvenios;

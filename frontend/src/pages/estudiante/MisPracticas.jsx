@@ -167,6 +167,20 @@ const MisPracticas = () => {
     return result;
   }, [tareasPorCiclo]);
 
+  const promBaseLocal = useMemo(() => {
+    const p1 = promediosCiclo[1];
+    const p2 = promediosCiclo[2];
+    if (p1 === null || p2 === null) return null;
+    return Math.round(((p1 + p2) / 2 + Number.EPSILON) * 100) / 100;
+  }, [promediosCiclo]);
+
+  const promSupLocal = useMemo(() => {
+    const base = promBaseLocal;
+    const supTask = promediosCiclo[3];
+    if (base === null || supTask === null) return null;
+    return Math.round(((base + supTask) / 2 + Number.EPSILON) * 100) / 100;
+  }, [promBaseLocal, promediosCiclo]);
+
   useEffect(() => {
     if (!tareasFiltradas.length) {
       setTareaSeleccionadaId(null);
@@ -248,23 +262,27 @@ const MisPracticas = () => {
     }
   };
 
-  const subirEntrega = async (tareaId) => {
-    const archivo = archivoTarea[tareaId];
+  const subirEntrega = async (tareaId, subTarea = null) => {
+    const key = subTarea ? `${tareaId}-${subTarea}` : tareaId;
+    const archivo = archivoTarea[key];
     if (!archivo) {
       setMensaje({ tipo: 'error', texto: 'Selecciona un archivo antes de subir la entrega.' });
       return;
     }
 
     try {
-      setSubiendoTareaId(tareaId);
+      setSubiendoTareaId(key);
       const formData = new FormData();
       formData.append('archivo', archivo);
+      if (subTarea) {
+        formData.append('subTarea', subTarea);
+      }
       await api.post(`/estudiante/tareas/${tareaId}/entregar`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setMensaje({ tipo: 'success', texto: 'Entrega subida correctamente.' });
       await cargarDatos();
-      setArchivoTarea((prev) => ({ ...prev, [tareaId]: null }));
+      setArchivoTarea((prev) => ({ ...prev, [key]: null }));
     } catch (error) {
       setMensaje({
         tipo: 'error',
@@ -305,19 +323,19 @@ const MisPracticas = () => {
 
   if (!inscripcionActiva) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
         <div className="max-w-4xl mx-auto px-4 py-10">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">No tienes una inscripcion activa</h2>
-            <p className="text-gray-600 mb-4">
-              Para participar en ciclos y tareas, primero debes tener una inscripcion activa.
+          <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+            <h2 className="text-xl font-black text-slate-800 uppercase tracking-wider mb-2">No tienes una inscripción activa</h2>
+            <p className="text-xs font-semibold text-slate-550 mb-6">
+              Para participar en ciclos académicos y subir tus tareas, primero debes estar inscrito en una modalidad de prácticas preprofesionales.
             </p>
             <Link
               to="/estudiante/inscripcion"
-              className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold"
+              className="btn btn-primary"
             >
-              Ir a Inscripcion
+              Ir a Inscripciones
             </Link>
           </div>
         </div>
@@ -326,114 +344,119 @@ const MisPracticas = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-        
 
-        {/* Barra de Navegación Rápida Fuera de la Tarjeta */}
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        
+        {/* Barra de Navegación Rápida */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <Link
             to="/dashboard"
-            className="inline-flex items-center gap-2 text-[11px] font-extrabold text-slate-500 hover:text-indigo-600 transition-colors uppercase tracking-wider bg-white px-4 py-2.5 rounded-xl shadow-sm border border-slate-100 w-fit"
+            className="inline-flex items-center gap-2 text-[10px] font-black text-slate-550 hover:text-[#ec3724] transition-colors uppercase tracking-widest bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200 w-fit"
           >
-            <FiArrowLeft className="h-4 w-4 text-slate-400" /> Volver al Dashboard
+            <FiArrowLeft className="h-3.5 w-3.5" /> Volver al Dashboard
           </Link>
           <Link
             to={requestedTipo ? `/estudiante/calificaciones?tipo=${requestedTipo}` : "/estudiante/calificaciones"}
-            className="inline-flex items-center gap-2 text-[11px] font-extrabold text-indigo-600 hover:text-indigo-800 transition-colors uppercase tracking-wider bg-white px-4 py-2.5 rounded-xl shadow-sm border border-indigo-100 hover:border-indigo-200 w-fit"
+            className="inline-flex items-center gap-2 text-[10px] font-black text-[#ec3724] hover:text-[#d32010] transition-colors uppercase tracking-widest bg-white px-4 py-2 rounded-lg shadow-sm border border-rose-100 hover:border-rose-200 w-fit"
           >
-            <FiBookOpen className="h-4 w-4 text-indigo-500" /> Ver calificaciones
+            <FiBookOpen className="h-3.5 w-3.5" /> Ver Calificaciones
           </Link>
         </div>
 
         {esSoloLectura && (
-          <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-yellow-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center gap-3 shadow-md animate-fadeIn">
-            <div className="p-2 bg-amber-500/20 text-amber-800 rounded-xl border border-amber-500/30">
-              <FiInfo className="h-5 w-5" />
-            </div>
+          <div className="bg-white border-l-4 border-amber-500 rounded-lg p-4 flex items-start gap-3 shadow-sm">
+            <FiInfo className="h-5 w-5 text-amber-555 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-bold text-slate-800">
-                Vista de Solo Lectura — Historial de Prácticas {requestedTipo === 'comunitaria' ? 'Comunitarias' : 'Laborales'}
+              <p className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                Vista de Solo Lectura — Prácticas {requestedTipo === 'comunitaria' ? 'Comunitarias' : 'Laborales'} Acreditadas
               </p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Esta modalidad se encuentra acreditada y finalizada. No se permiten nuevas entregas ni modificaciones de archivos.
+              <p className="text-[11px] text-slate-500 mt-1 font-semibold leading-relaxed">
+                Este ciclo se encuentra validado y finalizado académicamente por la institución. Las entregas y modificaciones de archivos están inhabilitadas.
               </p>
             </div>
           </div>
         )}
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+        {/* Encabezado General del Módulo */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
           <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">{esSoloLectura ? 'Práctica Acreditada (Historial)' : 'Matricula activa'}</p>
-            <h1 className="text-2xl font-black text-gray-900 mt-1">
-              {inscripcionActiva.convenio?.nombreEmpresa || 'Practica asignada'}
+            <span className="text-[10px] font-black uppercase text-slate-450 tracking-widest block">
+              {esSoloLectura ? 'Práctica Acreditada (Historial)' : 'Matrícula de Prácticas Activa'}
+            </span>
+            <h1 className="text-xl font-black text-slate-900 mt-1 uppercase tracking-wide">
+              {inscripcionActiva.convenio?.nombreEmpresa || 'Práctica Asignada'}
             </h1>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 text-sm">
-            <div className="rounded-xl border bg-gray-50 p-3">
-              <p className="text-gray-500">Modalidad</p>
-              <p className="font-bold text-gray-900 capitalize">{inscripcionActiva.tipoPractica || '---'}</p>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Modalidad</span>
+              <span className="font-black text-slate-800 uppercase tracking-wide">{inscripcionActiva.tipoPractica || '---'}</span>
             </div>
-            <div className="rounded-xl border bg-gray-50 p-3">
-              <p className="text-gray-500">Area</p>
-              <p className="font-bold text-gray-900">{inscripcionActiva.convenio?.area || '---'}</p>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Área Técnica</span>
+              <span className="font-black text-slate-800 uppercase tracking-wide">{inscripcionActiva.convenio?.area || '---'}</span>
             </div>
-            <div className="rounded-xl border bg-gray-50 p-3">
-              <p className="text-gray-500">Fecha de inscripcion</p>
-              <p className="font-bold text-gray-900">{formatearFecha(inscripcionActiva.fechaInscripcion)}</p>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Fecha de Inscripción</span>
+              <span className="font-black text-slate-800">{formatearFecha(inscripcionActiva.fechaInscripcion)}</span>
             </div>
           </div>
         </div>
 
         {mensaje.texto && (
           <div
-            className={`rounded-xl border p-3 flex items-center gap-2 text-sm ${
+            className={`rounded-lg border p-3.5 flex items-center gap-2.5 text-xs font-bold ${
               mensaje.tipo === 'success'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-rose-50 border-rose-200 text-rose-700'
+                ? 'bg-emerald-50 border-emerald-250 text-emerald-800'
+                : 'bg-rose-50 border-rose-250 text-[#ec3724]'
             }`}
           >
-            <FiAlertCircle className="h-5 w-5" />
+            <FiAlertCircle className="h-4.5 w-4.5 flex-shrink-0" />
             <span>{mensaje.texto}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-          <aside className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden h-fit">
-            <div className="p-4 border-b bg-gray-50">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+          
+          {/* Navegador de Ciclos y Tareas (Estilo Menú Moodle) */}
+          <aside className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-fit">
+            <div className="p-3 bg-slate-50 border-b border-slate-200">
               <div className="relative">
-                <FiSearch className="absolute top-3 left-3 text-gray-400" />
+                <FiSearch className="absolute top-3 left-3 text-slate-400 h-3.5 w-3.5" />
                 <input
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder="Buscar titulo o descripcion..."
-                  className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm"
+                  placeholder="Buscar anexo o código..."
+                  className="w-full border border-slate-300 rounded-md pl-8 pr-3 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724]"
                 />
               </div>
             </div>
 
-            <div className="p-3 space-y-3">
-              {[1, 2, 3].map((ciclo) => {
+            <div className="p-2 space-y-2.5">
+              {[1, 2, 3].filter((c) => c !== 3 || (tareasPorCiclo[3] && tareasPorCiclo[3].length > 0)).map((ciclo) => {
                 const isActivo = cicloActivo === ciclo;
                 const tareasCiclo = tareasPorCiclo[ciclo] || [];
                 return (
-                  <div key={ciclo} className={`rounded-xl border ${isActivo ? 'border-indigo-300 bg-indigo-50/40' : 'border-gray-200'}`}>
+                  <div key={ciclo} className={`rounded-lg overflow-hidden border ${isActivo ? 'border-slate-350 bg-slate-50/50' : 'border-slate-200'}`}>
                     <button
-                      className="w-full text-left px-3 py-3"
+                      className={`w-full text-left px-3 py-2.5 border-b border-slate-200 ${isActivo ? 'bg-slate-100 border-l-4 border-l-[#ec3724]' : 'bg-white'}`}
                       onClick={() => setCicloActivo(ciclo)}
                     >
-                      <p className={`font-bold ${isActivo ? 'text-indigo-900' : 'text-gray-900'}`}>Ciclo {ciclo}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {tareasCiclo.length} tarea(s) | Promedio: {promediosCiclo[ciclo] ?? '--'}
+                      <p className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                        {ciclo === 3 ? 'Examen Supletorio' : `Ciclo ${ciclo}`}
+                      </p>
+                      <p className="text-[10px] font-bold text-slate-450 uppercase mt-0.5">
+                        {tareasCiclo.length} tarea(s) {ciclo !== 3 ? `| Prom: ${promediosCiclo[ciclo] !== null ? promediosCiclo[ciclo].toFixed(2) : '--'}` : `| Base: ${promBaseLocal !== null ? promBaseLocal.toFixed(2) : '--'}`}
                       </p>
                     </button>
 
                     {isActivo && (
-                      <div className="px-2 pb-2 space-y-1">
+                      <div className="p-1 space-y-1 bg-white">
                         {tareasCiclo.length === 0 ? (
-                          <p className="text-xs text-gray-500 px-2 py-2">No hay tareas en este ciclo.</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase p-3 text-center">Sin tareas registradas.</p>
                         ) : (
                           tareasCiclo.map((t) => {
                             const selected = tareaSeleccionadaId === t.id;
@@ -442,22 +465,22 @@ const MisPracticas = () => {
                               <button
                                 key={t.id}
                                 onClick={() => setTareaSeleccionadaId(t.id)}
-                                className={`w-full text-left rounded-lg px-2 py-2 border transition ${
+                                className={`w-full text-left rounded px-2.5 py-2 border transition-all text-xs font-semibold ${
                                   selected
-                                    ? 'border-indigo-500 bg-white'
-                                    : 'border-transparent hover:border-gray-200 hover:bg-white'
+                                    ? 'border-rose-150 bg-rose-50/30 text-[#ec3724]'
+                                    : 'border-transparent hover:bg-slate-50 text-slate-700'
                                 }`}
                               >
                                 <div className="flex flex-col space-y-0.5">
-                                  <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
+                                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
                                     {t.codigo}
                                   </span>
-                                  <span className="text-sm font-bold text-slate-800 leading-snug line-clamp-2">
+                                  <span className="font-bold leading-tight truncate">
                                     {t.titulo}
                                   </span>
                                 </div>
-                                <p className="text-[11px] text-gray-500 mt-1">
-                                  {estadoVentanaLabel[t.estadoVentana] || t.estadoVentana} | Estado: {estadoEntrega}
+                                <p className="text-[9px] font-bold uppercase text-slate-455 mt-1 flex items-center gap-1">
+                                  {estadoVentanaLabel[t.estadoVentana] || t.estadoVentana} • {estadoEntrega}
                                 </p>
                               </button>
                             );
@@ -470,197 +493,385 @@ const MisPracticas = () => {
               })}
             </div>
           </aside>
-
-          <main className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+          
+          {/* Detalles de la Tarea y Envíos (Estilo Moodle SpeedGrader / Ficha) */}
+          <main className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-fit">
             {!tareaSeleccionada ? (
-              <div className="p-8 text-center text-gray-500">
-                Selecciona una tarea del panel izquierdo para ver su detalle.
+              <div className="p-10 text-center text-slate-400 font-bold uppercase text-xs">
+                Selecciona una tarea en el panel izquierdo para ver su detalle de envío.
               </div>
             ) : (
-              <div className="p-6 space-y-6">
-                <div>
-                  <div className="flex flex-col space-y-0.5">
-                    <span className="text-xs font-extrabold uppercase text-indigo-600 tracking-widest">
-                      {tareaSeleccionada.codigo}
-                    </span>
-                    <h2 className="text-2xl font-black text-slate-800 leading-tight">
-                      {tareaSeleccionada.titulo}
-                    </h2>
-                  </div>
+              <div className="space-y-6">
+                
+                {/* Cabecera Sección de Información - Estilo Académico Limpio */}
+                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+                  <FiFileText className="h-4.5 w-4.5 text-slate-500" />
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                    Detalle Académico de la Tarea: {tareaSeleccionada.codigo} - {tareaSeleccionada.titulo}
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 text-sm">
-                  <div className="rounded-xl bg-gray-50 border p-3">
-                    <p className="text-gray-500">Puntaje maximo</p>
-                    <p className="font-bold text-gray-900 mt-1">{tareaSeleccionada.puntajeMaximo}</p>
-                  </div>
-                  <div className="rounded-xl bg-gray-50 border p-3">
-                    <p className="text-gray-500">Apertura</p>
-                    <p className="font-bold text-gray-900 mt-1">
-                      {new Date(tareaSeleccionada.fechaApertura).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-gray-50 border p-3">
-                    <p className="text-gray-500">Cierre</p>
-                    <p className="font-bold text-gray-900 mt-1">
-                      {new Date(tareaSeleccionada.fechaCierre).toLocaleString()}
-                    </p>
-                    <p className={`text-xs mt-1 font-semibold ${
-                      tareaSeleccionada.estadoVentana === 'abierta' ? 'text-emerald-700' : 'text-gray-500'
-                    }`}>
-                      {formatCountdown(tareaSeleccionada.fechaCierre, ahora)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-gray-50 border p-3">
-                    <p className="text-gray-500">Mi nota</p>
-                    <p className={`font-bold mt-1 ${colorNota(tareaSeleccionada.entrega?.nota)}`}>
-                      {tareaSeleccionada.entrega?.nota ?? '--'}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">Se refleja en Calificaciones</p>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 p-4">
-                  <h3 className="text-sm font-bold text-gray-900 mb-2">Instrucciones</h3>
-                  <p className="text-sm text-gray-700 whitespace-pre-line">
-                    {tareaSeleccionada.descripcion || 'Sin descripcion para esta tarea.'}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 p-4">
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                      estadoVentanaClass[tareaSeleccionada.estadoVentana] || 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {estadoVentanaLabel[tareaSeleccionada.estadoVentana] || tareaSeleccionada.estadoVentana}
-                    </span>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                      estadoEntregaClass[tareaSeleccionada.entrega?.estado || 'sin_entrega'] || 'bg-gray-100 text-gray-700'
-                    }`}>
-                      Estado entrega: {tareaSeleccionada.entrega?.estado || 'sin_entrega'}
-                    </span>
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
-                      Ciclo {tareaSeleccionada.numeroCiclo}
-                    </span>
-                  </div>
-
-                  {tareaSeleccionada.entrega && (
-                    <div className="mb-4 rounded-lg bg-gray-50 border p-3">
-                      <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                        <FiFileText /> Archivo enviado: {tareaSeleccionada.entrega.nombreArchivo}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Enviado: {new Date(tareaSeleccionada.entrega.fechaEntrega).toLocaleString()}
-                      </p>
-                      <div className="mt-2 flex gap-2">
-                        <button
-                          onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivo)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-sky-100 text-sky-800 font-semibold text-sm"
-                        >
-                          <FiEye /> Ver
-                        </button>
-                        <button
-                          onClick={() => descargarEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivo)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-gray-100 text-gray-700 font-semibold text-sm"
-                        >
-                          <FiDownload /> Descargar
-                        </button>
+                <div className="px-6 pb-6 space-y-6">
+                  
+                  {cicloActivo === 3 && promBaseLocal !== null && (
+                    <div className="bg-slate-50 border-l-4 border-l-[#ec3724] border border-slate-200 rounded-lg p-4 flex items-start gap-3">
+                      <FiInfo className="h-5 w-5 text-[#ec3724] mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                          Examen Supletorio Activo
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-1 font-semibold leading-relaxed">
+                          Promedio Base obtenido (Ciclos 1 y 2): <strong className="text-[#ec3724]">{promBaseLocal.toFixed(2)}</strong> / 10.00. 
+                          La calificación final será promediada de la siguiente forma: **(Nota Base + Nota Examen Supletorio) / 2**.
+                        </p>
                       </div>
                     </div>
                   )}
 
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-bold text-gray-900">Subir o reemplazar entrega</h3>
+                  {/* Ficha de Instrucciones y Contenido */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                      Instrucciones de la Tarea
+                    </div>
+                    <div className="p-4 bg-white text-xs font-semibold text-slate-700 leading-relaxed whitespace-pre-line">
+                      {tareaSeleccionada.descripcion || 'No se han registrado instrucciones especiales para esta tarea.'}
+                    </div>
+                  </div>
 
-                    {esSoloLectura ? (
-                      <p className="text-sm text-slate-500 italic bg-slate-50 border border-slate-200/60 rounded-xl p-4 flex items-center gap-2">
-                        <FiAlertCircle className="text-slate-400 h-5 w-5 flex-shrink-0" />
-                        Esta modalidad está aprobada y acreditada. La entrega de archivos se encuentra deshabilitada (Vista de Solo Lectura).
+                  {/* Tabla Oficial de Estado de la Entrega (Estilo Moodle) */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-slate-150 border-b border-slate-200 px-4 py-2 text-[10px] font-black text-slate-650 uppercase tracking-wider flex items-center gap-1.5">
+                      <FiCalendar className="text-[#ec3724] h-3.5 w-3.5" />
+                      Estado de la Entrega
+                    </div>
+                    
+                    <div className="divide-y divide-slate-200 text-xs">
+                      {/* Estado */}
+                      <div className="grid grid-cols-[140px_1fr] md:grid-cols-[200px_1fr] divide-x divide-slate-200">
+                        <div className="bg-slate-50 px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Estado de la entrega</div>
+                        <div className="px-4 py-2.5 font-bold text-slate-800 flex items-center">
+                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                            estadoEntregaClass[tareaSeleccionada.entrega?.estado || 'sin_entrega']
+                          }`}>
+                            {tareaSeleccionada.entrega?.estado || 'sin_entrega'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Calificación */}
+                      <div className="grid grid-cols-[140px_1fr] md:grid-cols-[200px_1fr] divide-x divide-slate-200">
+                        <div className="bg-slate-50 px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Estado de la calificación</div>
+                        <div className="px-4 py-2.5 font-black flex items-center text-slate-800">
+                          {tareaSeleccionada.entrega?.nota !== null && tareaSeleccionada.entrega?.nota !== undefined ? (
+                            <span className={`text-xs font-black ${colorNota(tareaSeleccionada.entrega.nota)}`}>
+                              Calificado ({tareaSeleccionada.entrega.nota} / 10.00)
+                            </span>
+                          ) : (
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Sin Calificar</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Fecha de Cierre */}
+                      <div className="grid grid-cols-[140px_1fr] md:grid-cols-[200px_1fr] divide-x divide-slate-200">
+                        <div className="bg-slate-50 px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Fecha de entrega limite</div>
+                        <div className="px-4 py-2.5 font-bold text-slate-700 flex items-center">
+                          {new Date(tareaSeleccionada.fechaCierre).toLocaleString()}
+                        </div>
+                      </div>
+
+                      {/* Tiempo Restante */}
+                      <div className="grid grid-cols-[140px_1fr] md:grid-cols-[200px_1fr] divide-x divide-slate-200">
+                        <div className="bg-slate-50 px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Tiempo restante</div>
+                        <div className="px-4 py-2.5 font-black flex items-center">
+                          <span className={tareaSeleccionada.estadoVentana === 'abierta' ? 'text-emerald-650' : 'text-slate-550'}>
+                            {formatCountdown(tareaSeleccionada.fechaCierre, ahora)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Archivos Enviados */}
+                      <div className="grid grid-cols-[140px_1fr] md:grid-cols-[200px_1fr] divide-x divide-slate-200">
+                        <div className="bg-slate-50 px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Archivos enviados</div>
+                        <div className="px-4 py-3 text-slate-700 font-semibold space-y-3">
+                          {tareaSeleccionada.titulo.toLowerCase().includes('anexo b') ? (
+                            <div className="space-y-3">
+                              {/* Subtarea 1: Tutor Interno */}
+                              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/60">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Subtarea 1: Tutor Interno</span>
+                                  {tareaSeleccionada.entrega?.nombreArchivoInterno && (
+                                    <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded">Subido</span>
+                                  )}
+                                </div>
+                                {tareaSeleccionada.entrega?.nombreArchivoInterno ? (
+                                  <div className="mt-2 space-y-2">
+                                    <p className="text-xs font-bold text-slate-800 truncate">{tareaSeleccionada.entrega.nombreArchivoInterno}</p>
+                                    <div className="flex gap-1.5">
+                                      <button
+                                        onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoInterno)}
+                                        className="btn btn-secondary py-1 px-2.5 text-[9px]"
+                                      >
+                                        Ver PDF
+                                      </button>
+                                      <button
+                                        onClick={() => descargarEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoInterno)}
+                                        className="btn btn-secondary py-1 px-2.5 text-[9px]"
+                                      >
+                                        Descargar
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Sin entrega registrada</p>
+                                )}
+                              </div>
+
+                              {/* Subtarea 2: Tutor Externo */}
+                              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/60">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Subtarea 2: Tutor Externo</span>
+                                  {tareaSeleccionada.entrega?.nombreArchivoExterno && (
+                                    <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded">Subido</span>
+                                  )}
+                                </div>
+                                {tareaSeleccionada.entrega?.nombreArchivoExterno ? (
+                                  <div className="mt-2 space-y-2">
+                                    <p className="text-xs font-bold text-slate-800 truncate">{tareaSeleccionada.entrega.nombreArchivoExterno}</p>
+                                    <div className="flex gap-1.5">
+                                      <button
+                                        onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoExterno)}
+                                        className="btn btn-secondary py-1 px-2.5 text-[9px]"
+                                      >
+                                        Ver PDF
+                                      </button>
+                                      <button
+                                        onClick={() => descargarEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoExterno)}
+                                        className="btn btn-secondary py-1 px-2.5 text-[9px]"
+                                      >
+                                        Descargar
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Sin entrega registrada</p>
+                                )}
+                              </div>
+                            </div>
+                          ) : tareaSeleccionada.entrega ? (
+                            tareaSeleccionada.titulo.toLowerCase().includes('anexo f') ? (
+                              <p className="text-xs text-emerald-600 font-black uppercase tracking-wider">✓ Calificado por Docente (Documento de uso reservado)</p>
+                            ) : (
+                              <div className="space-y-2">
+                                <p className="text-xs font-bold text-slate-800">{tareaSeleccionada.entrega.nombreArchivo || 'Nota registrada directamente por el tutor'}</p>
+                                {tareaSeleccionada.entrega.rutaArchivo && (
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivo)}
+                                      className="btn btn-secondary py-1 px-2.5 text-[9px]"
+                                    >
+                                      Ver PDF
+                                    </button>
+                                    <button
+                                      onClick={() => descargarEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivo)}
+                                      className="btn btn-secondary py-1 px-2.5 text-[9px]"
+                                    >
+                                      Descargar
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sin entrega registrada</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Caja de Cargas / Subida de Archivos */}
+                  <div className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 shadow-sm space-y-4">
+                    <h3 className="text-xs font-black text-slate-850 uppercase tracking-wider">Buzón de Entregas</h3>
+                    
+                    {tareaSeleccionada.titulo.toLowerCase().includes('anexo f') ? (
+                      <div className="bg-rose-50 border border-rose-150 rounded-lg p-4 text-[#ec3724] text-[11px] font-semibold leading-relaxed">
+                        * Este es un documento de calificación final de uso reservado del tutor académico. Tu docente tutor subirá la rúbrica (Anexo F) directamente al sistema una vez concluido el ciclo.
+                      </div>
+                    ) : esSoloLectura ? (
+                      <p className="text-xs text-slate-500 font-semibold italic">
+                        El proceso de acreditación de prácticas ya está finalizado. No se permiten nuevas entregas.
                       </p>
                     ) : tareaSeleccionada.puedeEntregar ? (
-                      <>
-                        <label
-                          htmlFor={`archivo-${tareaSeleccionada.id}`}
-                          className="block w-full rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 transition cursor-pointer p-5"
-                        >
-                          <input
-                            id={`archivo-${tareaSeleccionada.id}`}
-                            type="file"
-                            accept=".pdf,.doc,.docx"
-                            className="hidden"
-                            onChange={(e) =>
-                              setArchivoTarea((prev) => ({
-                                ...prev,
-                                [tareaSeleccionada.id]: e.target.files?.[0] || null,
-                              }))
-                            }
-                          />
-                          <div className="flex items-center justify-center gap-2 text-gray-700">
-                            <FiUpload className="h-5 w-5" />
-                            <span className="text-sm font-medium">Suelta archivos o haz clic para examinar</span>
+                      tareaSeleccionada.titulo.toLowerCase().includes('anexo b') ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          
+                          {/* Buzón Tutor Interno */}
+                          <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-3 shadow-sm">
+                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Subir Evaluación Tutor Interno</span>
+                            <label
+                              htmlFor={`archivo-${tareaSeleccionada.id}-interno`}
+                              className="block w-full border border-dashed border-slate-300 rounded-lg p-4 bg-slate-50/50 hover:bg-slate-50 cursor-pointer text-center"
+                            >
+                              <input
+                                id={`archivo-${tareaSeleccionada.id}-interno`}
+                                type="file"
+                                accept=".pdf,.doc,.docx"
+                                className="hidden"
+                                onChange={(e) =>
+                                  setArchivoTarea((prev) => ({
+                                    ...prev,
+                                    [`${tareaSeleccionada.id}-interno`]: e.target.files?.[0] || null,
+                                  }))
+                                }
+                              />
+                              <div className="flex flex-col items-center gap-1.5 text-slate-500">
+                                <FiUpload className="h-4.5 w-4.5 text-[#ec3724]" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider">Seleccionar Archivo</span>
+                              </div>
+                              {archivoTarea[`${tareaSeleccionada.id}-interno`] && (
+                                <p className="text-[10px] font-black text-[#ec3724] mt-2 truncate">
+                                  {archivoTarea[`${tareaSeleccionada.id}-interno`].name}
+                                </p>
+                              )}
+                            </label>
+                            <button
+                              onClick={() => subirEntrega(tareaSeleccionada.id, 'interno')}
+                              disabled={subiendoTareaId === `${tareaSeleccionada.id}-interno`}
+                              className="btn btn-primary w-full py-2 flex items-center justify-center gap-1.5"
+                            >
+                              <FiUpload className="h-3.5 w-3.5" />
+                              {subiendoTareaId === `${tareaSeleccionada.id}-interno` ? 'Enviando...' : 'Enviar Evaluación TI'}
+                            </button>
                           </div>
-                          <p className="text-xs text-gray-500 text-center mt-2">Permitidos: PDF, DOC, DOCX</p>
-                          {archivoTarea[tareaSeleccionada.id] && (
-                            <p className="text-xs text-indigo-700 text-center mt-2 font-semibold">
-                              Archivo seleccionado: {archivoTarea[tareaSeleccionada.id].name}
-                            </p>
-                          )}
-                        </label>
-                        <button
-                          onClick={() => subirEntrega(tareaSeleccionada.id)}
-                          disabled={subiendoTareaId === tareaSeleccionada.id}
-                          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold disabled:opacity-60"
-                        >
-                          <FiUpload />
-                          {subiendoTareaId === tareaSeleccionada.id ? 'Enviando...' : 'Enviar'}
-                        </button>
-                      </>
+
+                          {/* Buzón Tutor Externo */}
+                          <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-3 shadow-sm">
+                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Subir Evaluación Tutor Externo</span>
+                            <label
+                              htmlFor={`archivo-${tareaSeleccionada.id}-externo`}
+                              className="block w-full border border-dashed border-slate-300 rounded-lg p-4 bg-slate-50/50 hover:bg-slate-50 cursor-pointer text-center"
+                            >
+                              <input
+                                id={`archivo-${tareaSeleccionada.id}-externo`}
+                                type="file"
+                                accept=".pdf,.doc,.docx"
+                                className="hidden"
+                                onChange={(e) =>
+                                  setArchivoTarea((prev) => ({
+                                    ...prev,
+                                    [`${tareaSeleccionada.id}-externo`]: e.target.files?.[0] || null,
+                                  }))
+                                }
+                              />
+                              <div className="flex flex-col items-center gap-1.5 text-slate-500">
+                                <FiUpload className="h-4.5 w-4.5 text-[#ec3724]" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider">Seleccionar Archivo</span>
+                              </div>
+                              {archivoTarea[`${tareaSeleccionada.id}-externo`] && (
+                                <p className="text-[10px] font-black text-[#ec3724] mt-2 truncate">
+                                  {archivoTarea[`${tareaSeleccionada.id}-externo`].name}
+                                </p>
+                              )}
+                            </label>
+                            <button
+                              onClick={() => subirEntrega(tareaSeleccionada.id, 'externo')}
+                              disabled={subiendoTareaId === `${tareaSeleccionada.id}-externo`}
+                              className="btn btn-primary w-full py-2 flex items-center justify-center gap-1.5"
+                            >
+                              <FiUpload className="h-3.5 w-3.5" />
+                              {subiendoTareaId === `${tareaSeleccionada.id}-externo` ? 'Enviando...' : 'Enviar Evaluación TE'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <label
+                            htmlFor={`archivo-${tareaSeleccionada.id}`}
+                            className="block w-full border-2 border-dashed border-slate-300 rounded-xl p-5 bg-white hover:bg-slate-50/50 cursor-pointer text-center"
+                          >
+                            <input
+                              id={`archivo-${tareaSeleccionada.id}`}
+                              type="file"
+                              accept=".pdf,.doc,.docx"
+                              className="hidden"
+                              onChange={(e) =>
+                                setArchivoTarea((prev) => ({
+                                  ...prev,
+                                  [tareaSeleccionada.id]: e.target.files?.[0] || null,
+                                }))
+                              }
+                            />
+                            <div className="flex flex-col items-center gap-1.5 text-slate-655">
+                              <FiUpload className="h-6 w-6 text-[#ec3724] mb-1" />
+                              <span className="text-xs font-black uppercase tracking-wider">Suelta archivos o haz clic para examinar</span>
+                              <span className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Formatos permitidos: PDF, DOC, DOCX</span>
+                            </div>
+                            {archivoTarea[tareaSeleccionada.id] && (
+                              <p className="text-xs font-black text-[#ec3724] mt-3">
+                                Seleccionado: {archivoTarea[tareaSeleccionada.id].name}
+                              </p>
+                            )}
+                          </label>
+                          <button
+                            onClick={() => subirEntrega(tareaSeleccionada.id)}
+                            disabled={subiendoTareaId === tareaSeleccionada.id}
+                            className="btn btn-primary px-5 py-2.5 flex items-center gap-2"
+                          >
+                            <FiUpload className="h-4 w-4" />
+                            {subiendoTareaId === tareaSeleccionada.id ? 'Subiendo Entrega...' : 'Guardar Entrega'}
+                          </button>
+                        </div>
+                      )
                     ) : (
-                      <p className="text-sm text-gray-600 flex items-center gap-2">
-                        <FiClock className="h-4 w-4" />
+                      <p className="text-xs text-[#ec3724] font-bold flex items-center gap-1.5 bg-rose-50 border border-rose-150 p-3 rounded-lg">
+                        <FiClock className="h-4.5 w-4.5 flex-shrink-0" />
                         {mensajeBloqueoEntrega(tareaSeleccionada)}
                       </p>
                     )}
                   </div>
 
+                  {/* Retroalimentación / Comentarios del Docente */}
                   {tareaSeleccionada.entrega?.comentarioDocente && (
-                    <div className="mt-4 rounded-lg bg-gray-50 border border-gray-200 p-3">
-                      <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                        <FiCheckCircle /> Retroalimentacion del docente
-                      </h4>
-                      <p className="text-sm text-gray-700 mt-1">
-                        {tareaSeleccionada.entrega.comentarioDocente}
-                      </p>
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                      <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                        Retroalimentación del Docente Tutor
+                      </div>
+                      <div className="p-4 bg-white text-xs font-semibold text-slate-700 leading-relaxed whitespace-pre-line italic">
+                        "{tareaSeleccionada.entrega.comentarioDocente}"
+                      </div>
                     </div>
                   )}
+
                 </div>
               </div>
             )}
           </main>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-sm text-gray-600 flex items-center gap-2">
-          <FiBriefcase className="text-gray-500" />
-          Gestiona tus entregas por ciclo desde esta pantalla.
+        {/* Footer Informativo */}
+        <div className="bg-white rounded-lg border border-slate-200 p-4 text-[10px] font-black uppercase text-slate-450 tracking-widest flex items-center gap-2.5 shadow-sm">
+          <FiBriefcase className="text-slate-400 h-4.5 w-4.5 flex-shrink-0" />
+          <span>Gestión Oficial de Entregas por Ciclos de Prácticas Académicas de la ESPOCH</span>
         </div>
       </div>
 
       {preview.open && (
-        <div className="fixed inset-0 z-50 bg-black/70 p-4 flex items-center justify-center">
-          <div className="bg-white rounded-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
-              <h4 className="font-bold text-gray-900 truncate">Vista previa - {preview.nombre}</h4>
+        <div className="fixed inset-0 z-50 bg-black/70 p-4 flex items-center justify-center backdrop-blur-sm">
+          <div className="bg-white rounded-xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden border border-slate-200 shadow-2xl">
+            <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+              <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider truncate">Vista Previa - {preview.nombre}</h4>
               <button
-                className="px-3 py-1 rounded bg-gray-100 text-gray-700 font-semibold"
+                className="btn btn-secondary py-1 px-3"
                 onClick={() => {
                   if (preview.url) URL.revokeObjectURL(preview.url);
                   setPreview({ open: false, url: '', nombre: '' });
                 }}
               >
-                Cerrar
+                Cerrar Ventana
               </button>
             </div>
-            <iframe title="mi-entrega-preview" src={preview.url} className="w-full h-full" />
+            <iframe title="mi-entrega-preview" src={preview.url} className="w-full h-full border-0" />
           </div>
         </div>
       )}

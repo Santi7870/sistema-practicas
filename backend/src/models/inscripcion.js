@@ -38,6 +38,16 @@ const Inscripcion = sequelize.define(
       },
       onDelete: 'SET NULL',
     },
+    paraleloId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'paralelo_id',
+      references: {
+        model: 'paralelos',
+        key: 'id',
+      },
+      onDelete: 'SET NULL',
+    },
     tipoPractica: {
       type: DataTypes.ENUM('laboral', 'comunitaria'),
       allowNull: false,

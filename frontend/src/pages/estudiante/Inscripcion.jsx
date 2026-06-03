@@ -178,24 +178,26 @@ const Inscripcion = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        
         {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center space-x-2 text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group cursor-pointer"
-          >
-            <FiArrowLeft className="h-5 w-5 transform group-hover:-translate-x-1 transition-transform duration-200" />
-            <span>Volver al Dashboard</span>
-          </button>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Inscripción a Prácticas Preprofesionales
-          </h1>
-          <p className="text-gray-600">
-            Selecciona el convenio en el que deseas realizar tus prácticas
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+          <div className="space-y-1">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="inline-flex items-center gap-2 text-[10px] font-black text-slate-555 hover:text-[#ec3724] transition-colors uppercase tracking-widest bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200"
+            >
+              <FiArrowLeft className="h-3.5 w-3.5" /> Volver al Dashboard
+            </button>
+            <h1 className="text-xl font-black text-slate-900 uppercase tracking-wide pt-3">
+              Inscripción a Prácticas Preprofesionales
+            </h1>
+            <p className="text-xs font-semibold text-slate-500">
+              Selecciona el convenio o proyecto en el que deseas realizar tu progreso académico.
+            </p>
+          </div>
         </div>
 
         {/* Mensaje */}
@@ -203,41 +205,42 @@ const Inscripcion = () => {
           <div
             className={`alert ${
               mensaje.tipo === 'success' ? 'alert-success' : 'alert-error'
-            } flex items-center space-x-2 mb-6`}
+            } flex items-center gap-2 mb-6`}
           >
             {mensaje.tipo === 'success' ? (
-              <FiCheckCircle className="h-5 w-5" />
+              <FiCheckCircle className="h-4.5 w-4.5 flex-shrink-0" />
             ) : (
-              <FiAlertCircle className="h-5 w-5" />
+              <FiAlertCircle className="h-4.5 w-4.5 flex-shrink-0" />
             )}
-            <span>{mensaje.texto}</span>
+            <span className="uppercase text-[10px] font-black tracking-wider">{mensaje.texto}</span>
           </div>
         )}
 
         {/* Información importante */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-          <div className="flex items-start space-x-3">
-            <FiAlertCircle className="h-6 w-6 text-blue-600 mt-0.5" />
-            <div>
-              <h3 className="text-lg font-bold text-blue-900 mb-2">
-                Información Importante
+        <div className="bg-white border border-slate-200 border-l-4 border-l-[#ec3724] rounded-xl p-6 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-rose-50 text-[#ec3724] rounded-lg">
+              <FiAlertCircle className="h-5 w-5" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                Requisitos y Normas de Inscripción
               </h3>
-              <ul className="text-sm text-blue-800 space-y-2">
+              <ul className="text-[11px] text-slate-500 font-semibold space-y-1.5 leading-relaxed">
                 <li>
-                  ✓ Asegúrate de haber completado tus datos personales antes de
-                  inscribirte
+                  ✓ Asegúrate de haber completado tus datos personales y código de estudiante en tu perfil antes de inscribirte.
                 </li>
                 <li>
-                  ✓ Solo puedes inscribirte a un convenio a la vez
+                  ✓ Solo puedes mantener una solicitud de inscripción activa a la vez por periodo académico.
                 </li>
                 <li>
-                  ✓ Tu inscripción será revisada por el administrador
+                  ✓ Tu inscripción será evaluada formalmente por el tutor académico asignado.
                 </li>
                 <li>
-                  ✓ Recibirás una notificación cuando tu inscripción sea aprobada
+                  ✓ Recibirás notificaciones en tiempo real cuando tu cupo sea aprobado y validado.
                 </li>
                 <li>
-                  ✓ Lee atentamente el área de cada convenio antes de seleccionar
+                  ✓ Lee atentamente las vacantes por modalidad (Laborales o Comunitarias) de cada convenio.
                 </li>
               </ul>
             </div>
@@ -246,15 +249,15 @@ const Inscripcion = () => {
 
         {/* Barra de búsqueda */}
         {convenios.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
             <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por empresa o área..."
-                className="input pl-10"
+                placeholder="Buscar por empresa o área de desarrollo..."
+                className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
               />
             </div>
           </div>
@@ -262,125 +265,136 @@ const Inscripcion = () => {
 
         {/* Lista de convenios */}
         {conveniosFiltrados.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <FiBriefcase className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              {busqueda
-                ? 'No se encontraron convenios'
-                : 'No hay convenios disponibles'}
+          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-sm">
+            <FiBriefcase className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-1">
+              {busqueda ? 'No se encontraron resultados' : 'No hay convenios cargados'}
             </h3>
-            <p className="text-gray-600">
+            <p className="text-[11px] font-semibold text-slate-500">
               {busqueda
-                ? 'Intenta con otros términos de búsqueda'
-                : 'Por favor contacta al administrador'}
+                ? 'Intenta refinando tus términos de búsqueda en el filtro.'
+                : 'Por favor, contacta con la coordinación de la carrera.'}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {conveniosFiltrados.map((convenio) => (
-              <div
-                key={convenio.id}
-                onClick={() => setConvenioSeleccionado(convenio)}
-                className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer p-6 ${
-                  convenioSeleccionado?.id === convenio.id
-                    ? 'ring-2 ring-primary-500 border-primary-500'
-                    : ''
-                }`}
-              >
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">
-                      {convenio.nombreEmpresa}
-                    </h3>
-                    <p className="text-sm text-gray-600">{convenio.area}</p>
-                  </div>
-                  {convenioSeleccionado?.id === convenio.id && (
-                    <FiCheckCircle className="h-6 w-6 text-primary-600" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {conveniosFiltrados.map((convenio) => {
+              const isSelected = convenioSeleccionado?.id === convenio.id;
+              return (
+                <div
+                  key={convenio.id}
+                  onClick={() => setConvenioSeleccionado(convenio)}
+                  className={`bg-white rounded-xl border p-5 transition-all duration-200 cursor-pointer shadow-sm relative overflow-hidden flex flex-col justify-between ${
+                    isSelected
+                      ? 'border-[#ec3724] ring-1 ring-[#ec3724]'
+                      : 'border-slate-200 hover:border-slate-350 hover:shadow-md'
+                  }`}
+                >
+                  {/* Indicador lateral rojo si seleccionado */}
+                  {isSelected && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#ec3724]" />
                   )}
-                </div>
 
-                {/* Cupos */}
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span className="flex items-center">
-                      <FiUsers className="h-4 w-4 mr-1" />
-                      Total de Cupos
-                    </span>
-                    <span className="font-semibold text-gray-700">
-                      {cuposDisponibles(convenio)} / {convenio.cuposTotales}
+                  {/* Header */}
+                  <div className="space-y-1 mb-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide line-clamp-2">
+                        {convenio.nombreEmpresa}
+                      </h3>
+                      {isSelected && (
+                        <FiCheckCircle className="h-4.5 w-4.5 text-[#ec3724] flex-shrink-0" />
+                      )}
+                    </div>
+                    <span className="inline-block text-[9px] font-black text-[#ec3724] uppercase tracking-wider bg-rose-50 px-2 py-0.5 rounded border border-rose-100/50">
+                      {convenio.area}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs border-t pt-2 mt-2">
-                    <div className="bg-indigo-50 p-2 rounded">
-                      <span className="block text-gray-500 font-medium">💼 Laborales</span>
-                      <strong className="text-indigo-800">
-                        {convenio.cuposLaboralesTotales - convenio.cuposLaboralesOcupados} / {convenio.cuposLaboralesTotales}
-                      </strong>
+                  {/* Cupos */}
+                  <div className="space-y-2 mb-4 pt-3 border-t border-slate-100">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
+                      <span className="flex items-center uppercase tracking-wider">
+                        <FiUsers className="h-3.5 w-3.5 mr-1" />
+                        Cupos Disponibles:
+                      </span>
+                      <span className="font-black text-slate-800">
+                        {cuposDisponibles(convenio)} / {convenio.cuposTotales}
+                      </span>
                     </div>
-                    <div className="bg-emerald-50 p-2 rounded">
-                      <span className="block text-gray-500 font-medium">🤝 Comunitarias</span>
-                      <strong className="text-emerald-800">
-                        {convenio.cuposComunitariosTotales - convenio.cuposComunitariosOcupados} / {convenio.cuposComunitariosTotales}
-                      </strong>
+
+                    <div className="grid grid-cols-2 gap-2 text-[9px] pt-1">
+                      <div className="bg-slate-50 border border-slate-200/60 p-2 rounded">
+                        <span className="block text-slate-450 font-bold uppercase tracking-wider">💼 Laborales</span>
+                        <strong className="text-slate-800 text-xs font-black">
+                          {convenio.cuposLaboralesTotales - convenio.cuposLaboralesOcupados} / {convenio.cuposLaboralesTotales}
+                        </strong>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200/60 p-2 rounded">
+                        <span className="block text-slate-450 font-bold uppercase tracking-wider">🤝 Comunales</span>
+                        <strong className="text-slate-800 text-xs font-black">
+                          {convenio.cuposComunitariosTotales - convenio.cuposComunitariosOcupados} / {convenio.cuposComunitariosTotales}
+                        </strong>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Badge */}
-                <div className="pt-3 border-t">
-                  <span className="badge badge-success text-xs">
-                    Activo y disponible
-                  </span>
+                  {/* Badge de Estado */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="inline-flex px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-[9px] font-black uppercase tracking-wider">
+                      Activo y disponible
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {/* Botón de inscripción y Selección de Modalidad */}
         {convenioSeleccionado && (
-          <div className="bg-white rounded-lg shadow-md p-6 border-2 border-primary-500 transition-all duration-300">
+          <div className="bg-white rounded-xl shadow-md p-6 border border-[#ec3724] relative overflow-hidden transition-all duration-300">
+            {/* Indicador superior rojo */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-[#ec3724]" />
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
               {/* Información del convenio */}
-              <div className="lg:col-span-1">
-                <span className="text-xs font-semibold text-primary-600 bg-primary-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              <div className="lg:col-span-1 space-y-2">
+                <span className="inline-block text-[9px] font-black text-[#ec3724] bg-rose-50 px-2 py-0.5 rounded border border-rose-100/50 uppercase tracking-wider">
                   Convenio Seleccionado
                 </span>
-                <h3 className="text-xl font-bold text-gray-900 mt-2 mb-1">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
                   {convenioSeleccionado.nombreEmpresa}
                 </h3>
-                <p className="text-sm text-gray-600">
-                  <strong>Área:</strong> {convenioSeleccionado.area}
+                <p className="text-xs font-bold text-slate-500">
+                  <strong>Área Académica:</strong> {convenioSeleccionado.area}
                 </p>
                 {convenioSeleccionado.contacto && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-[10px] text-slate-400 font-semibold leading-relaxed border-t border-slate-100 pt-2">
                     <strong>Tutor/Contacto:</strong> {convenioSeleccionado.contacto}
                   </p>
                 )}
               </div>
 
               {/* Selector de Modalidad */}
-              <div className="lg:col-span-1 border-t lg:border-t-0 lg:border-l lg:border-r border-gray-100 lg:px-6 py-4 lg:py-0">
-                <label className="block text-sm font-bold text-gray-700 mb-3">
+              <div className="lg:col-span-1 border-t lg:border-t-0 lg:border-l lg:border-r border-slate-100 lg:px-6 py-4 lg:py-0 space-y-3">
+                <label className="block text-xs font-black text-slate-800 uppercase tracking-wider">
                   Selecciona la Modalidad de Práctica *
                 </label>
                 <div className="flex flex-col space-y-2">
                   {/* Práctica Laboral */}
                   <label
-                    className={`flex flex-col p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    className={`flex flex-col p-3 rounded-lg border cursor-pointer transition-all ${
                       tipoPracticaSeleccionado === 'laboral'
-                        ? 'border-indigo-600 bg-indigo-50 text-indigo-900 font-semibold'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                        ? 'border-[#ec3724] bg-rose-50/20 text-[#ec3724]'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
                     } ${
                       (convenioSeleccionado.cuposLaboralesTotales - convenioSeleccionado.cuposLaboralesOcupados <= 0) || !tieneComunitariaAprobada
-                        ? 'opacity-60 cursor-not-allowed bg-gray-50'
+                        ? 'opacity-50 cursor-not-allowed bg-slate-50'
                         : ''
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center gap-2">
                         <input
                           type="radio"
                           name="tipoPractica"
@@ -388,16 +402,16 @@ const Inscripcion = () => {
                           checked={tipoPracticaSeleccionado === 'laboral'}
                           onChange={(e) => setTipoPracticaSeleccionado(e.target.value)}
                           disabled={(convenioSeleccionado.cuposLaboralesTotales - convenioSeleccionado.cuposLaboralesOcupados <= 0) || !tieneComunitariaAprobada}
-                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                          className="h-3.5 w-3.5 text-[#ec3724] focus:ring-[#ec3724] border-slate-300"
                         />
-                        <span>💼 Práctica Laboral</span>
+                        <span className="text-xs font-bold uppercase tracking-wider">💼 Práctica Laboral</span>
                       </div>
-                      <span className="text-xs">
+                      <span className="text-[10px] font-black">
                         {convenioSeleccionado.cuposLaboralesTotales - convenioSeleccionado.cuposLaboralesOcupados} cupos disp.
                       </span>
                     </div>
                     {!tieneComunitariaAprobada && (
-                      <span className="block text-[10px] text-red-600 font-semibold mt-1.5 pl-7">
+                      <span className="block text-[8px] text-[#ec3724] font-black uppercase tracking-wider mt-1.5 pl-5">
                         ⚠️ Requiere Prácticas Comunitarias aprobadas primero
                       </span>
                     )}
@@ -405,18 +419,18 @@ const Inscripcion = () => {
 
                   {/* Práctica Comunitaria */}
                   <label
-                    className={`flex flex-col p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    className={`flex flex-col p-3 rounded-lg border cursor-pointer transition-all ${
                       tipoPracticaSeleccionado === 'comunitaria'
-                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900 font-semibold'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                        ? 'border-emerald-600 bg-emerald-50/20 text-emerald-800'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
                     } ${
                       (convenioSeleccionado.cuposComunitariosTotales - convenioSeleccionado.cuposComunitariosOcupados <= 0) || tieneComunitariaAprobada
-                        ? 'opacity-60 cursor-not-allowed bg-gray-50'
+                        ? 'opacity-50 cursor-not-allowed bg-slate-50'
                         : ''
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center gap-2">
                         <input
                           type="radio"
                           name="tipoPractica"
@@ -424,16 +438,16 @@ const Inscripcion = () => {
                           checked={tipoPracticaSeleccionado === 'comunitaria'}
                           onChange={(e) => setTipoPracticaSeleccionado(e.target.value)}
                           disabled={(convenioSeleccionado.cuposComunitariosTotales - convenioSeleccionado.cuposComunitariosOcupados <= 0) || tieneComunitariaAprobada}
-                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                          className="h-3.5 w-3.5 text-emerald-600 focus:ring-emerald-500 border-slate-300"
                         />
-                        <span>🤝 Práctica Comunitaria</span>
+                        <span className="text-xs font-bold uppercase tracking-wider">🤝 Práctica Comunitaria</span>
                       </div>
-                      <span className="text-xs">
+                      <span className="text-[10px] font-black">
                         {convenioSeleccionado.cuposComunitariosTotales - convenioSeleccionado.cuposComunitariosOcupados} cupos disp.
                       </span>
                     </div>
                     {tieneComunitariaAprobada && (
-                      <span className="block text-[10px] text-emerald-600 font-semibold mt-1.5 pl-7">
+                      <span className="block text-[8px] text-emerald-600 font-black uppercase tracking-wider mt-1.5 pl-5">
                         ✓ Ya has aprobado tus Prácticas Comunitarias
                       </span>
                     )}
@@ -442,40 +456,28 @@ const Inscripcion = () => {
               </div>
 
               {/* Botón de Confirmación */}
-              <div className="lg:col-span-1 flex flex-col justify-center">
+              <div className="lg:col-span-1 flex flex-col justify-center space-y-2">
                 <button
                   onClick={inscribirse}
                   disabled={!tipoPracticaSeleccionado || procesando}
-                  className="btn btn-primary w-full py-4 text-base font-bold shadow-lg hover:shadow-xl hover:translate-y-[-1px] active:translate-y-[1px] transition-all flex items-center justify-center space-x-2"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-[#ec3724] text-white hover:bg-[#d32010] rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {procesando ? (
                     <>
-                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          fill="none"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
+                      <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
                       <span>Inscribiendo...</span>
                     </>
                   ) : (
                     <>
-                      <FiCheckCircle className="h-5 w-5" />
+                      <FiCheckCircle className="h-4.5 w-4.5" />
                       <span>Confirmar Inscripción</span>
                     </>
                   )}
                 </button>
-                <p className="text-xs text-gray-500 text-center mt-2">
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider text-center">
                   * Sujeto a revisión y aprobación del tutor
                 </p>
               </div>

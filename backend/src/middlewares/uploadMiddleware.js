@@ -28,6 +28,8 @@ const fileFilter = (req, file, cb) => {
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ];
 
   if (allowedMimes.includes(file.mimetype)) {
@@ -35,7 +37,7 @@ const fileFilter = (req, file, cb) => {
   } else {
     cb(
       new Error(
-        'Formato de archivo no permitido. Solo se aceptan archivos PDF, DOC y DOCX.'
+        'Formato de archivo no permitido. Solo se aceptan archivos PDF, DOC, DOCX, XLS y XLSX.'
       ),
       false
     );

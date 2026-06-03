@@ -42,22 +42,35 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white shadow-md">
+    <nav className="bg-white border-b border-slate-200/80 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo y título */}
           <div className="flex items-center">
-            <Link to="/dashboard" className="flex items-center space-x-2">
-              <div className="bg-primary-600 text-white p-2 rounded-lg">
-                <FiHome className="h-6 w-6" />
+            <div className="flex items-center space-x-3">
+              <Link to="/dashboard" className="flex items-center" title="Ir al Dashboard">
+                <img
+                  src="/espochlogo.png"
+                  alt="Logo ESPOCH"
+                  className="h-10 w-auto object-contain hover:scale-105 transition-transform"
+                />
+              </Link>
+              <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
+                <Link
+                  to="/dashboard"
+                  className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-slate-50 rounded-lg transition-all"
+                  title="Ir al Dashboard"
+                >
+                  <FiHome className="h-5 w-5" />
+                </Link>
+                <div>
+                  <h1 className="text-base font-black text-slate-900 leading-none">
+                    Sistema de Prácticas
+                  </h1>
+                  <span className="text-[10px] font-bold text-slate-400 block mt-0.5">ESPOCH - Software</span>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  Sistema de Prácticas
-                </h1>
-                <p className="text-xs text-gray-500">ESPOCH - Software</p>
-              </div>
-            </Link>
+            </div>
           </div>
 
           {/* Menú desktop */}
@@ -90,6 +103,7 @@ const Navbar = () => {
                 <FiUser className="h-5 w-5" />
               </div>
             </div>
+
 
             {/* Botón de cerrar sesión */}
             <button

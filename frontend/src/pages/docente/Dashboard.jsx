@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FiAlertCircle,
@@ -19,6 +19,7 @@ const DocenteDashboard = () => {
   const [estudiantes, setEstudiantes] = useState([]);
   const [tareas, setTareas] = useState([]);
   const [entregasPendientes, setEntregasPendientes] = useState([]);
+  const [paraleloDocente, setParaleloDocente] = useState(null);
 
   const cargarDatos = async () => {
     try {
@@ -30,6 +31,7 @@ const DocenteDashboard = () => {
         api.get('/docente/entregas/pendientes?limit=8'),
       ]);
       setEstudiantes(rEst.data.data || []);
+      setParaleloDocente(rEst.data.paraleloAsignado || null);
       setTareas(rTareas.data.data || []);
       setEntregasPendientes(rPend.data.data || []);
     } catch (err) {
@@ -74,103 +76,138 @@ const DocenteDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-        <div className="bg-white rounded-2xl p-6 border shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black text-gray-900">Panel Docente</h1>
-            <p className="text-gray-500 mt-1">
-              Bienvenido, <strong>{usuario?.email}</strong>. Gestiona tareas por ciclos y calificaciones.
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fadeIn">
+        
+        {/* Welcome Header */}
+        <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm relative overflow-hidden flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#ec3724]"></div>
+          <div className="pl-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-xl font-black text-slate-900 uppercase tracking-wide">Panel Docente Tutor</h1>
+              {paraleloDocente ? (
+                <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded border text-[10px] font-black uppercase tracking-wider select-none ${
+                  paraleloDocente.tipoPractica === 'laboral'
+                    ? 'bg-rose-50 border-rose-100 text-[#ec3724]'
+                    : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                }`}>
+                  <span>{paraleloDocente.tipoPractica === 'laboral' ? '💼' : '🤝'}</span>
+                  <span>Paralelo {paraleloDocente.nombre}</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded border text-[10px] font-black bg-amber-50 border-amber-200 text-amber-800 uppercase tracking-wider select-none">
+                  <span>⚠️</span>
+                  <span>Sin Paralelo Asignado</span>
+                </span>
+              )}
+            </div>
+            <p className="text-xs font-semibold text-slate-500 mt-1.5">
+              Bienvenido, <strong className="text-slate-800">{usuario?.email}</strong>. Gestiona tareas por ciclos y calificaciones.
             </p>
-            {error && <p className="text-rose-600 mt-2">{error}</p>}
+            {error && <p className="text-xs font-black text-rose-600 mt-2 uppercase tracking-wide">{error}</p>}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pl-2 lg:pl-0">
             <Link
               to="/docente/ciclos"
-              className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-xl"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#ec3724] text-white hover:bg-[#d32010] rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all active:scale-[0.98]"
             >
-              <FiClipboard /> Gestion de Ciclos y Tareas
+              <FiClipboard /> Gestión de Ciclos y Tareas
             </Link>
             <Link
               to="/docente/estudiantes"
-              className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold px-4 py-2 rounded-xl"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all active:scale-[0.98]"
             >
-              <FiUsers /> Ver estudiantes
+              <FiUsers /> Ver Estudiantes
             </Link>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-white rounded-2xl border p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Estudiantes tutelados</p>
-            <p className="text-3xl font-black text-gray-900 mt-1">{resumen.estudiantes}</p>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Estudiantes Tutelados</span>
+            <p className="text-3xl font-black text-slate-800 mt-1">{resumen.estudiantes}</p>
           </div>
-          <div className="bg-white rounded-2xl border p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Tareas creadas</p>
-            <p className="text-3xl font-black text-indigo-700 mt-1">{resumen.tareasCreadas}</p>
+          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Tareas Creadas</span>
+            <p className="text-3xl font-black text-[#ec3724] mt-1">{resumen.tareasCreadas}</p>
           </div>
-          <div className="bg-white rounded-2xl border p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Entregas por calificar</p>
-            <p className="text-3xl font-black text-rose-700 mt-1">{resumen.entregasPorCalificar}</p>
+          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Por Calificar</span>
+            <p className="text-3xl font-black text-rose-600 mt-1">{resumen.entregasPorCalificar}</p>
           </div>
-          <div className="bg-white rounded-2xl border p-5 shadow-sm">
-            <p className="text-sm text-gray-500">En proceso</p>
-            <p className="text-3xl font-black text-amber-700 mt-1">{resumen.enProceso}</p>
+          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">En Proceso</span>
+            <p className="text-3xl font-black text-amber-600 mt-1">{resumen.enProceso}</p>
           </div>
-          <div className="bg-white rounded-2xl border p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Finalizados</p>
-            <p className="text-3xl font-black text-emerald-700 mt-1">{resumen.finalizados}</p>
+          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Acreditados</span>
+            <p className="text-3xl font-black text-emerald-600 mt-1">{resumen.finalizados}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-900">Entregas recientes pendientes de calificacion</h2>
-            <Link to="/docente/ciclos" className="text-indigo-600 font-semibold inline-flex items-center gap-1">
-              Ir a ciclos <FiArrowRight />
+        {/* Pending Tasks Table Container */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+            <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider">Entregas Recientes por Calificar</h2>
+            <Link
+              to="/docente/ciclos"
+              className="text-[#ec3724] hover:text-[#d32010] text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1 transition-colors"
+            >
+              Ir a Ciclos <FiArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
           {entregasPendientes.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No hay entregas pendientes por calificar.</div>
+            <div className="p-10 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider bg-white">
+              No tienes entregas pendientes por calificar en tus ciclos.
+            </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
-                  <tr>
-                    <th className="text-left px-4 py-3">Estudiante</th>
-                    <th className="text-left px-4 py-3">Tarea</th>
-                    <th className="text-left px-4 py-3">Archivo</th>
-                    <th className="text-left px-4 py-3">Fecha entrega</th>
-                    <th className="text-left px-4 py-3">Estado</th>
-                    <th className="text-left px-4 py-3">Accion</th>
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 border-b border-slate-200 text-slate-550 font-black uppercase text-[9px] tracking-wider divide-x divide-slate-200">
+                    <th className="px-5 py-3">Estudiante</th>
+                    <th className="px-5 py-3">Tarea Académica</th>
+                    <th className="px-5 py-3">Archivo</th>
+                    <th className="px-5 py-3">Fecha de Entrega</th>
+                    <th className="px-5 py-3 text-center">Estado</th>
+                    <th className="px-5 py-3 text-center">Acción</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-slate-200 text-slate-700 font-semibold bg-white">
                   {entregasPendientes.map((e) => (
-                    <tr key={e.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-gray-900">{e.inscripcion?.estudiante?.nombres || 'Sin nombre'}</p>
-                        <p className="text-xs text-gray-500">{e.inscripcion?.estudiante?.usuario?.email}</p>
+                    <tr key={e.id} className="hover:bg-slate-50/50 transition-colors divide-x divide-slate-100">
+                      <td className="px-5 py-3.5">
+                        <p className="font-bold text-slate-850 text-xs uppercase">{e.inscripcion?.estudiante?.nombres || 'Sin nombre'}</p>
+                        <p className="text-[9px] font-bold text-slate-400 mt-0.5">{e.inscripcion?.estudiante?.usuario?.email}</p>
                       </td>
-                      <td className="px-4 py-3">
-                        <p className="font-semibold">{e.tarea?.codigo}</p>
-                        <p className="text-xs text-gray-500">{e.tarea?.titulo}</p>
+                      <td className="px-5 py-3.5">
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">{e.tarea?.codigo}</span>
+                        <p className="font-bold text-slate-800 truncate uppercase max-w-[200px]" title={e.tarea?.titulo}>{e.tarea?.titulo}</p>
                       </td>
-                      <td className="px-4 py-3">{e.nombreArchivo}</td>
-                      <td className="px-4 py-3">{new Date(e.fechaEntrega).toLocaleString()}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${e.estado === 'tarde' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>
+                      <td className="px-5 py-3.5 text-slate-500 font-semibold truncate max-w-[150px]" title={e.nombreArchivo}>
+                        {e.nombreArchivo}
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-600 font-bold">
+                        {new Date(e.fechaEntrega).toLocaleString()}
+                      </td>
+                      <td className="px-5 py-3.5 text-center">
+                        <span className={`inline-flex px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${
+                          e.estado === 'tarde'
+                            ? 'bg-rose-50 border-rose-200 text-rose-700'
+                            : 'bg-sky-50 border-sky-200 text-sky-700'
+                        }`}>
                           {e.estado}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-3.5 text-center">
                         <Link
                           to={`/docente/tareas/${e.tarea?.id}`}
-                          className="inline-flex items-center gap-1 text-indigo-600 font-semibold"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-50 hover:bg-sky-100 text-sky-850 hover:text-sky-900 border border-sky-200/50 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm transition-all"
                         >
-                          <FiBookOpen /> Calificar
+                          <FiBookOpen className="h-3 w-3" /> Calificar
                         </Link>
                       </td>
                     </tr>
@@ -181,24 +218,28 @@ const DocenteDashboard = () => {
           )}
         </div>
 
+        {/* Informative Reminders */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-2xl border p-5 shadow-sm">
-            <p className="text-sm text-gray-500 flex items-center gap-2">
-              <FiAlertCircle /> Recordatorio
+          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#ec3724]" />
+            <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest flex items-center gap-2">
+              <FiAlertCircle className="text-[#ec3724] h-4 w-4" /> Recordatorio Académico
             </p>
-            <p className="text-gray-800 mt-2">
-              Las entregas fuera de la ventana ya no se aceptan. Valida fechas de apertura/cierre al crear cada tarea.
+            <p className="text-xs font-semibold text-slate-600 mt-2.5 leading-relaxed">
+              Las entregas fuera de la ventana del cronograma institucional ya no se aceptan automáticamente. Valida rigurosamente las fechas de apertura y cierre al programar o extender cada tarea.
             </p>
           </div>
-          <div className="bg-white rounded-2xl border p-5 shadow-sm">
-            <p className="text-sm text-gray-500 flex items-center gap-2">
-              <FiCheckCircle /> Estado del modulo
+          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
+            <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest flex items-center gap-2">
+              <FiCheckCircle className="text-emerald-600 h-4 w-4" /> Estado de Evaluación
             </p>
-            <p className="text-gray-800 mt-2">
-              Sistema de ciclos activo con calificacion sobre 10 y promedio automatico por ciclo/nota final.
+            <p className="text-xs font-semibold text-slate-600 mt-2.5 leading-relaxed">
+              Sistema de ciclos activo e integrado con cálculo automático de promedios ponderados y nota final sobre 10.00 puntos según las directivas del reglamento oficial de la ESPOCH.
             </p>
           </div>
         </div>
+
       </div>
     </div>
   );

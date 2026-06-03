@@ -8,6 +8,7 @@ const {
   Notificacion,
   Tarea,
   Entrega,
+  Paralelo,
 } = require('../models');
 const {
   ESTADOS_CUENTA,
@@ -199,6 +200,11 @@ const obtenerEstudiantes = async (req, res) => {
               as: 'tutor',
               attributes: ['id', 'nombres'],
             },
+            {
+              model: Paralelo,
+              as: 'paralelo',
+              attributes: ['id', 'nombre'],
+            },
           ],
         },
       ],
@@ -261,6 +267,11 @@ const obtenerDetalleEstudiante = async (req, res) => {
               model: Documento,
               as: 'documentos',
             },
+            {
+              model: Paralelo,
+              as: 'paralelo',
+              attributes: ['id', 'nombre'],
+            },
           ],
         },
       ],
@@ -271,6 +282,16 @@ const obtenerDetalleEstudiante = async (req, res) => {
         success: false,
         message: 'Estudiante no encontrado.',
       });
+    }
+
+    if (estudiante.estadoProceso === 'pendiente_inicio' && estudiante.inscripcion) {
+      const hasEntrega = await Entrega.findOne({
+        where: { inscripcionId: estudiante.inscripcion.id }
+      });
+      if (hasEntrega) {
+        await estudiante.update({ estadoProceso: 'en_proceso' });
+        estudiante.estadoProceso = 'en_proceso';
+      }
     }
 
     res.json({
@@ -634,6 +655,12 @@ const obtenerDocentes = async (req, res) => {
           required: false,
           attributes: ['id'],
         },
+        {
+          model: Paralelo,
+          as: 'paralelos',
+          required: false,
+          attributes: ['id', 'nombre', 'tipoPractica'],
+        },
       ],
       order: [['nombres', 'ASC']],
     });
@@ -647,6 +674,11 @@ const obtenerDocentes = async (req, res) => {
       departamento: docente.departamento,
       tipoTutor: docente.tipoTutor,
       cargaActiva: docente.inscripciones ? docente.inscripciones.length : 0,
+      paralelos: docente.paralelos ? docente.paralelos.map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        tipoPractica: p.tipoPractica,
+      })) : [],
     }));
 
     res.json({
@@ -978,6 +1010,55 @@ const obtenerCalificacionesEstudiante = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Descargar entrega de un estudiante (administrador)
+ * @route   GET /api/admin/entregas/:entregaId/descargar
+ * @access  Private/Admin
+ */
+const descargarEntregaEstudiante = async (req, res) => {
+  try {
+    const { entregaId } = req.params;
+    const path = require('path');
+    const fs = require('fs');
+
+    const entrega = await Entrega.findByPk(entregaId, {
+      include: [{ model: Tarea, as: 'tarea' }],
+    });
+
+    if (!entrega) {
+      return res.status(404).json({ success: false, message: 'Entrega no encontrada.' });
+    }
+
+    const isAnexoB = entrega.tarea.titulo.toLowerCase().includes('anexo b');
+    const { subTarea } = req.query;
+
+    let targetPath = entrega.rutaArchivo;
+    let targetName = entrega.nombreArchivo;
+
+    if (isAnexoB && subTarea === 'interno') {
+      targetPath = entrega.rutaArchivoInterno;
+      targetName = entrega.nombreArchivoInterno;
+    } else if (isAnexoB && subTarea === 'externo') {
+      targetPath = entrega.rutaArchivoExterno;
+      targetName = entrega.nombreArchivoExterno;
+    }
+
+    if (!targetPath) {
+      return res.status(404).json({ success: false, message: 'Archivo no disponible para esta entrega.' });
+    }
+
+    const filePath = path.resolve(targetPath);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, message: 'Archivo no encontrado físicamente en el servidor.' });
+    }
+
+    return res.download(filePath, targetName);
+  } catch (error) {
+    console.error('Error en descargarEntregaEstudiante:', error);
+    return res.status(500).json({ success: false, message: 'Error al descargar el archivo.', error: error.message });
+  }
+};
+
 module.exports = {
   obtenerRegistrosPendientes,
   aprobarRegistro,
@@ -992,4 +1073,5 @@ module.exports = {
   autoAsignarTutores,
   asignarTutorManual,
   obtenerCalificacionesEstudiante,
+  descargarEntregaEstudiante,
 };

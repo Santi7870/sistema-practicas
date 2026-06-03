@@ -17,6 +17,7 @@ import ListaEstudiantes from './pages/admin/ListaEstudiantes';
 import DetalleEstudiante from './pages/admin/DetalleEstudiante';
 import GestionConvenios from './pages/admin/GestionConvenios';
 import GestionDocentes from './pages/admin/GestionDocentes';
+import GestionParalelos from './pages/admin/GestionParalelos';
 
 // Páginas de estudiante
 import CompletarDatos from './pages/estudiante/CompletarDatos';
@@ -109,6 +110,14 @@ function App() {
             element={
               <PrivateRoute adminOnly>
                 <GestionDocentes />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/paralelos"
+            element={
+              <PrivateRoute adminOnly>
+                <GestionParalelos />
               </PrivateRoute>
             }
           />

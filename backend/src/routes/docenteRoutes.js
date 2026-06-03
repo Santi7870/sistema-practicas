@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const docenteController = require('../controllers/docenteController');
 const tareaController = require('../controllers/tareaController');
+const upload = require('../middlewares/uploadMiddleware');
 const { verificarToken, esDocente } = require('../middlewares/authMiddleware');
 
 // Todas las rutas requieren autenticación y rol de docente
@@ -21,7 +22,9 @@ router.get('/tareas', tareaController.listarTareas);
 router.put('/tareas/:tareaId', tareaController.editarTarea);
 router.delete('/tareas/:tareaId', tareaController.eliminarTarea);
 router.get('/tareas/:tareaId/entregas', tareaController.verEntregasDeTarea);
+router.post('/tareas/:tareaId/estudiantes/:inscripcionId/entregar', upload.single('archivo'), tareaController.entregarTareaPorDocente);
 router.put('/entregas/:entregaId/calificar', tareaController.calificarEntrega);
+router.post('/tareas/:tareaId/estudiantes/:inscripcionId/calificar-sin-entrega', tareaController.calificarSinEntrega);
 router.get('/entregas/pendientes', tareaController.entregasPendientesRecientes);
 router.get('/entregas/:entregaId/preview', tareaController.previewEntrega);
 router.get('/entregas/:entregaId/descargar', tareaController.descargarEntrega);

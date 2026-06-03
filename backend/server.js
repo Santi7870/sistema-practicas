@@ -1,4 +1,4 @@
-﻿const app = require('./src/app');
+const app = require('./src/app');
 const sequelize = require('./src/config/database');
 const { Usuario } = require('./src/models');
 require('dotenv').config();
@@ -78,6 +78,33 @@ const startServer = async () => {
     }
 
     await bootstrapAdmin();
+
+    const bootstrapParalelos = async () => {
+      try {
+        const { Paralelo } = require('./src/models');
+        const nombres = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        const tipos = ['laboral', 'comunitaria'];
+
+        let creados = 0;
+        for (const tipo of tipos) {
+          for (const nombre of nombres) {
+            const [paralelo, created] = await Paralelo.findOrCreate({
+              where: { nombre, tipoPractica: tipo },
+              defaults: { nombre, tipoPractica: tipo, docenteId: null }
+            });
+            if (created) creados++;
+          }
+        }
+        if (creados > 0) {
+          console.log(`✅ Se crearon ${creados} paralelos iniciales.`);
+        } else {
+          console.log('ℹ️ Paralelos base ya se encuentran inicializados.');
+        }
+      } catch (err) {
+        console.error('Error al inicializar paralelos:', err);
+      }
+    };
+    await bootstrapParalelos();
 
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);

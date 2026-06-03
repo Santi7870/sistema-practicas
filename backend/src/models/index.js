@@ -1,4 +1,4 @@
-﻿const sequelize = require('../config/database');
+const sequelize = require('../config/database');
 
 // Import models
 const Usuario = require('./usuario');
@@ -11,6 +11,7 @@ const Notificacion = require('./notificacion');
 const Ciclo = require('./Ciclo');
 const Tarea = require('./Tarea');
 const Entrega = require('./Entrega');
+const Paralelo = require('./Paralelo');
 
 // Usuario - Estudiante (1:1)
 Usuario.hasOne(Estudiante, {
@@ -140,6 +141,28 @@ Entrega.belongsTo(Inscripcion, {
   as: 'inscripcion',
 });
 
+// Paralelo - Docente (N:1)
+Paralelo.belongsTo(Docente, {
+  foreignKey: 'docenteId',
+  as: 'docente',
+  onDelete: 'SET NULL',
+});
+Docente.hasMany(Paralelo, {
+  foreignKey: 'docenteId',
+  as: 'paralelos',
+});
+
+// Paralelo - Inscripcion (1:N)
+Paralelo.hasMany(Inscripcion, {
+  foreignKey: 'paraleloId',
+  as: 'inscripciones',
+  onDelete: 'SET NULL',
+});
+Inscripcion.belongsTo(Paralelo, {
+  foreignKey: 'paraleloId',
+  as: 'paralelo',
+});
+
 module.exports = {
   sequelize,
   Usuario,
@@ -152,5 +175,6 @@ module.exports = {
   Ciclo,
   Tarea,
   Entrega,
+  Paralelo,
 };
 

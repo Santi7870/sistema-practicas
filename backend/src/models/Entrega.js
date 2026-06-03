@@ -31,13 +31,53 @@ const Entrega = sequelize.define(
     },
     nombreArchivo: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true,
       field: 'nombre_archivo',
     },
     rutaArchivo: {
       type: DataTypes.STRING(500),
-      allowNull: false,
+      allowNull: true,
       field: 'ruta_archivo',
+    },
+    nombreArchivoInterno: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'nombre_archivo_interno',
+    },
+    rutaArchivoInterno: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      field: 'ruta_archivo_interno',
+    },
+    nombreArchivoExterno: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'nombre_archivo_externo',
+    },
+    rutaArchivoExterno: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      field: 'ruta_archivo_externo',
+    },
+    notaInterno: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: true,
+      field: 'nota_interno',
+    },
+    notaExterno: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: true,
+      field: 'nota_externo',
+    },
+    comentarioInterno: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'comentario_interno',
+    },
+    comentarioExterno: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'comentario_externo',
     },
     nota: {
       type: DataTypes.DECIMAL(5, 2),
@@ -63,6 +103,10 @@ const Entrega = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
       field: 'fecha_calificacion',
+    },
+    historial: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
   },
   {

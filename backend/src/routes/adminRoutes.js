@@ -16,6 +16,7 @@ router.put('/rechazar-registro/:usuarioId', adminController.rechazarRegistro);
 router.get('/estudiantes', adminController.obtenerEstudiantes);
 router.get('/estudiantes/:estudianteId', adminController.obtenerDetalleEstudiante);
 router.get('/estudiantes/:estudianteId/calificaciones', adminController.obtenerCalificacionesEstudiante);
+router.get('/entregas/:entregaId/descargar', adminController.descargarEntregaEstudiante);
 router.put('/estudiantes/:estudianteId/cambiar-convenio', adminController.cambiarConvenio);
 router.put('/estudiantes/:estudianteId/resetear', adminController.resetearEstudiante);
 

@@ -6,6 +6,7 @@ const {
   Documento,
   Convenio,
   Notificacion,
+  Paralelo,
 } = require('../models');
 const {
   ESTADOS_DOCUMENTO,
@@ -60,13 +61,29 @@ const obtenerEstudiantesAsignados = async (req, res) => {
           as: 'documentos',
           attributes: ['id', 'fase', 'tipoDocumento', 'estado'],
         },
+        {
+          model: Paralelo,
+          as: 'paralelo',
+          attributes: ['id', 'nombre'],
+        },
       ],
       order: [['createdAt', 'DESC']],
+    });
+
+    // 2.5 Buscar si este docente tiene un paralelo asignado actualmente
+    const paraleloDocente = await Paralelo.findOne({
+      where: { docenteId: docente.id }
     });
 
     res.json({
       success: true,
       cantidad: inscripciones.length,
+      paraleloAsignado: paraleloDocente ? {
+        id: paraleloDocente.id,
+        nombre: paraleloDocente.nombre,
+        tipoPractica: paraleloDocente.tipoPractica
+      } : null,
+      tipoTutor: docente.tipoTutor,
       data: inscripciones,
     });
   } catch (error) {
@@ -124,6 +141,11 @@ const obtenerDetalleEstudiante = async (req, res) => {
             {
               model: Documento,
               as: 'documentos',
+            },
+            {
+              model: Paralelo,
+              as: 'paralelo',
+              attributes: ['id', 'nombre'],
             },
           ],
         },

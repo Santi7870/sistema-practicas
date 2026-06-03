@@ -260,6 +260,42 @@ const DetalleEstudiante = () => {
     }
   };
 
+  const descargarEntregaEstudiante = async (entregaId, nombreArchivo, subTarea = null) => {
+    try {
+      let url = `/admin/entregas/${entregaId}/descargar`;
+      if (subTarea) {
+        url += `?subTarea=${subTarea}`;
+      }
+      const response = await api.get(url, {
+        responseType: 'blob',
+      });
+
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', nombreArchivo);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Error al descargar la entrega:', error);
+      setMensaje({
+        tipo: 'error',
+        texto: 'Error al descargar el archivo de la tarea.',
+      });
+      setTimeout(() => setMensaje({ tipo: '', texto: '' }), 4000);
+    }
+  };
+
+  const getPromedioBase = () => {
+    if (!calificaciones?.ciclos) return null;
+    const c1 = calificaciones.ciclos.find(c => c.numeroCiclo === 1)?.promedio;
+    const c2 = calificaciones.ciclos.find(c => c.numeroCiclo === 2)?.promedio;
+    if (c1 === null || c2 === null || c1 === undefined || c2 === undefined) return null;
+    return Math.round(((parseFloat(c1) + parseFloat(c2)) / 2 + Number.EPSILON) * 100) / 100;
+  };
+
   const resetearEstudiante = async () => {
     if (
       !window.confirm(
@@ -581,16 +617,24 @@ const DetalleEstudiante = () => {
               const c2 = r.getCell(2); c2.value = tarea.codigo || "--"; c2.alignment = { horizontal: 'center', vertical: 'middle' };
               const c3 = r.getCell(3); c3.value = tarea.titulo || "--"; c3.alignment = { horizontal: 'left', vertical: 'middle' };
               
+              const isAnexoF = tarea.titulo.toLowerCase().includes('anexo f');
               const notaVal = tarea.entrega ? (tarea.entrega.nota !== null ? parseFloat(tarea.entrega.nota) : null) : null;
-              const c4 = r.getCell(4); c4.value = notaVal !== null ? notaVal : "--"; c4.alignment = { horizontal: 'right', vertical: 'middle' }; c4.font = { bold: true };
+              const c4 = r.getCell(4); 
+              c4.value = isAnexoF && tarea.entrega?.estado === "calificada" ? "Cumplido" : (notaVal !== null ? notaVal : "--");
+              c4.alignment = { horizontal: 'right', vertical: 'middle' }; 
+              c4.font = { bold: true };
               
               const c5 = r.getCell(5); c5.value = tarea.puntajeMaximo || 10; c5.alignment = { horizontal: 'right', vertical: 'middle' };
               
-              const estadoText = tarea.entrega ? (tarea.entrega.estado === "calificada" ? "Calificada" : "Entregada (Pendiente)") : "Sin entregar";
+              const estadoText = tarea.entrega 
+                ? (isAnexoF && tarea.entrega.estado === "calificada")
+                  ? "Cumplido"
+                  : (tarea.entrega.estado === "calificada" ? "Calificada" : "Entregada (Pendiente)") 
+                : "Sin entregar";
               const c6 = r.getCell(6); c6.value = estadoText; c6.alignment = { horizontal: 'center', vertical: 'middle' };
               
               // Badge de color para el estado de la entrega
-              if (estadoText === "Calificada") {
+              if (estadoText === "Calificada" || estadoText === "Cumplido") {
                 c6.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }; // Light Green
                 c6.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF065F46' } };
               } else if (estadoText === "Entregada (Pendiente)") {
@@ -776,10 +820,10 @@ const DetalleEstudiante = () => {
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
         <div className="flex items-center justify-center h-[calc(100vh-64px)]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#ec3724]"></div>
         </div>
       </div>
     );
@@ -787,15 +831,15 @@ const DetalleEstudiante = () => {
 
   if (!estudiante) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <FiAlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+            <FiAlertCircle className="h-12 w-12 text-red-650 mx-auto mb-4" />
+            <h3 className="text-base font-black text-slate-800 uppercase tracking-wider mb-2">
               Estudiante no encontrado
             </h3>
-            <Link to="/admin/estudiantes" className="btn btn-primary mt-4">
+            <Link to="/admin/estudiantes" className="bg-[#ec3724] hover:bg-[#d32010] text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors inline-block mt-2">
               Volver a la lista
             </Link>
           </div>
@@ -807,52 +851,54 @@ const DetalleEstudiante = () => {
   const badge = getEstadoBadge(estudiante.estadoProceso);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header con botón volver */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div className="flex items-center space-x-4">
             <button
               onClick={() => navigate('/admin/estudiantes')}
-              className="btn btn-outline flex items-center space-x-2"
+              className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors border border-slate-200 flex items-center space-x-1.5"
             >
-              <FiArrowLeft className="h-5 w-5" />
+              <FiArrowLeft className="h-4 w-4" />
               <span>Volver</span>
             </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Detalle de Estudiante
+            <div className="border-l-4 border-[#ec3724] pl-4">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
+                Detalle del Estudiante
               </h1>
-              <p className="text-gray-600 mt-1">{estudiante.usuario.email}</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">
+                {estudiante.usuario.email}
+              </p>
             </div>
           </div>
 
           {/* Acciones */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
             {habilitarDescarga ? (
               <button
                 onClick={generarReporteExcel}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/20 hover:shadow-emerald-700/30 transform hover:-translate-y-0.5 transition-all flex items-center space-x-2"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors flex items-center space-x-1.5"
                 title="Descargar Reporte Oficial de Prácticas ESPOCH en Excel"
               >
-                <FiDownload className="h-5 w-5 animate-bounce" style={{ animationDuration: '2s' }} />
-                <span>Descargar Reporte Oficial (Excel)</span>
+                <FiDownload className="h-4 w-4" />
+                <span>Reporte Oficial (Excel)</span>
               </button>
             ) : (
               <div 
-                className="px-5 py-2.5 bg-gray-200 text-gray-400 font-semibold text-sm rounded-xl flex items-center space-x-2 cursor-not-allowed"
+                className="px-4 py-2 bg-slate-200 text-slate-400 font-bold text-xs uppercase tracking-wider rounded-lg flex items-center space-x-1.5 cursor-not-allowed"
                 title="El reporte se habilitará cuando el estudiante tenga un promedio académico de ciclos aprobado (>= 7.0) o complete todo el proceso."
               >
-                <FiDownload className="h-5 w-5" />
-                <span>Reporte Excel Bloqueado</span>
+                <FiDownload className="h-4 w-4" />
+                <span>Excel Bloqueado</span>
               </div>
             )}
             <button
               onClick={resetearEstudiante}
-              className="btn btn-danger flex items-center space-x-2"
+              className="bg-[#ec3724] hover:bg-[#d32010] text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center space-x-1.5"
             >
-              <FiRefreshCw className="h-5 w-5" />
+              <FiRefreshCw className="h-4 w-4" />
               <span>Resetear</span>
             </button>
           </div>
@@ -861,11 +907,13 @@ const DetalleEstudiante = () => {
         {/* Mensaje */}
         {mensaje.texto && (
           <div
-            className={`alert ${
-              mensaje.tipo === 'success' ? 'alert-success' : 'alert-error'
-            } flex items-center space-x-2 mb-6`}
+            className={`p-3 rounded-lg border text-xs font-bold uppercase tracking-wider flex items-center space-x-2 mb-6 ${
+              mensaje.tipo === 'success'
+                ? 'bg-green-50 border-green-200 text-green-700'
+                : 'bg-red-50 border-red-200 text-red-700'
+            }`}
           >
-            <FiAlertCircle className="h-5 w-5" />
+            <FiAlertCircle className="h-4 w-4" />
             <span>{mensaje.texto}</span>
           </div>
         )}
@@ -874,67 +922,62 @@ const DetalleEstudiante = () => {
           {/* Columna izquierda - Información personal */}
           <div className="lg:col-span-1 space-y-6">
             {/* Datos personales */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                <FiUser className="h-5 w-5 mr-2" />
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 flex items-center">
+                <FiUser className="h-4 w-4 mr-1.5 text-slate-500" />
                 Datos Personales
               </h2>
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm text-gray-600 flex items-center mb-1">
-                    <FiUser className="h-4 w-4 mr-1" />
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center mb-1">
                     Nombres Completos
                   </label>
-                  <p className="font-medium text-gray-900">
+                  <p className="text-sm font-bold text-slate-800">
                     {estudiante.nombres || (
-                      <span className="text-gray-400">No completado</span>
+                      <span className="text-slate-400 font-normal italic">No completado</span>
                     )}
                   </p>
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-600 flex items-center mb-1">
-                    <FiMail className="h-4 w-4 mr-1" />
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center mb-1">
                     Email
                   </label>
-                  <p className="font-medium text-gray-900">
+                  <p className="text-sm font-bold text-slate-800">
                     {estudiante.usuario.email}
                   </p>
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-600 flex items-center mb-1">
-                    <FiHash className="h-4 w-4 mr-1" />
-                    Código
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center mb-1">
+                    Código Estudiantil
                   </label>
-                  <p className="font-medium text-gray-900">
+                  <p className="text-sm font-bold text-slate-800">
                     {estudiante.codigo || (
-                      <span className="text-gray-400">No completado</span>
+                      <span className="text-slate-400 font-normal italic">No completado</span>
                     )}
                   </p>
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-600 flex items-center mb-1">
-                    <FiBookOpen className="h-4 w-4 mr-1" />
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center mb-1">
                     Semestre
                   </label>
-                  <p className="font-medium text-gray-900">
+                  <p className="text-sm font-bold text-slate-800">
                     {estudiante.semestre ? (
-                      `${estudiante.semestre}°`
+                      `${estudiante.semestre}° Semestre`
                     ) : (
-                      <span className="text-gray-400">No completado</span>
+                      <span className="text-slate-400 font-normal italic">No completado</span>
                     )}
                   </p>
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-600 flex items-center mb-1">
-                    <FiCalendar className="h-4 w-4 mr-1" />
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center mb-1">
                     Fecha de Registro
                   </label>
-                  <p className="text-sm text-gray-900">
+                  <p className="text-xs font-semibold text-slate-650">
                     {format(
                       new Date(estudiante.createdAt),
                       "d 'de' MMMM, yyyy",
@@ -946,17 +989,17 @@ const DetalleEstudiante = () => {
             </div>
 
             {/* Estado del proceso */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
                 Estado del Proceso
               </h2>
 
               <div className="flex items-center justify-between mb-4">
-                <span className="text-gray-700">Estado Actual:</span>
-                <span className={`badge ${badge.color}`}>{badge.texto}</span>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Estado Actual:</span>
+                <span className="bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">{badge.texto}</span>
               </div>
 
-              <div className="text-sm text-gray-600">
+              <div className="text-xs font-semibold text-slate-500 leading-relaxed">
                 <p>
                   {estudiante.estadoProceso === 'sin_asignar' &&
                     'El estudiante aún no se ha inscrito a ningún convenio.'}
@@ -977,60 +1020,60 @@ const DetalleEstudiante = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Información de inscripción */}
             {estudiante.inscripcion ? (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                  <FiBriefcase className="h-5 w-5 mr-2" />
-                  Inscripción a Convenio
+              <div className="bg-white rounded-xl border border-slate-200 p-6">
+                <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 flex items-center">
+                  <FiBriefcase className="h-4 w-4 mr-1.5 text-slate-500" />
+                  Inscripción al Proceso
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="text-sm text-gray-600 mb-1 block">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                       Empresa
                     </label>
-                    <p className="font-medium text-gray-900">
+                    <p className="text-sm font-bold text-slate-800">
                       {estudiante.inscripcion.convenio.nombreEmpresa}
                     </p>
                   </div>
 
                   <div>
-                    <label className="text-sm text-gray-600 mb-1 block">
-                      Área
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                      Área de Trabajo
                     </label>
-                    <p className="font-medium text-gray-900">
+                    <p className="text-sm font-bold text-slate-800">
                       {estudiante.inscripcion.convenio.area}
                     </p>
                   </div>
 
                   <div>
-                    <label className="text-sm text-gray-600 mb-1 block">
-                      Modalidad
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                      Modalidad de Práctica
                     </label>
                     <span
-                      className={`badge font-semibold ${
+                      className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                         estudiante.inscripcion.tipoPractica === 'comunitaria'
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                          ? 'bg-green-55 text-green-700 border border-green-200'
+                          : 'bg-[#ec3724]/10 text-[#ec3724] border border-[#ec3724]/20'
                       }`}
                     >
                       {estudiante.inscripcion.tipoPractica === 'comunitaria'
-                        ? '🤝 Comunitaria'
-                        : '💼 Laboral'}
+                        ? 'Comunitaria'
+                        : 'Laboral'}
                     </span>
                   </div>
 
                   <div>
-                    <label className="text-sm text-gray-600 mb-1 block">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                       Estado de Inscripción
                     </label>
                     <span
-                      className={`badge ${
+                      className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                         estudiante.inscripcion.estadoInscripcion === 'aprobada'
-                          ? 'badge-success'
+                          ? 'bg-green-55 text-green-700'
                           : estudiante.inscripcion.estadoInscripcion ===
                             'pendiente'
-                          ? 'badge-warning'
-                          : 'badge-danger'
+                          ? 'bg-amber-55 text-amber-700'
+                          : 'bg-red-55 text-red-700'
                       }`}
                     >
                       {estudiante.inscripcion.estadoInscripcion === 'aprobada'
@@ -1043,10 +1086,10 @@ const DetalleEstudiante = () => {
                   </div>
 
                   <div>
-                    <label className="text-sm text-gray-600 mb-1 block">
-                      Fecha de Inscripción
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                      Fecha de Solicitud
                     </label>
-                    <p className="text-sm text-gray-900">
+                    <p className="text-xs font-semibold text-slate-650">
                       {format(
                         new Date(estudiante.inscripcion.fechaInscripcion),
                         "d 'de' MMMM, yyyy",
@@ -1058,16 +1101,15 @@ const DetalleEstudiante = () => {
 
                 {/* TUTOR ACADÉMICO - ASIGNACIÓN MANUAL */}
                 {estudiante.inscripcion.estadoInscripcion === 'aprobada' && (
-                  <div className="mt-6 pt-5 border-t border-gray-100">
-                    <h3 className="text-sm font-bold text-gray-800 flex items-center mb-3">
-                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 mr-2"></span>
-                      👨‍🏫 Tutor Académico Asignado
+                  <div className="mt-6 pt-5 border-t border-slate-100">
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-3">
+                      Tutor Académico Asignado
                     </h3>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                       <select
                         value={tutorSeleccionado || ''}
                         onChange={(e) => setTutorSeleccionado(e.target.value || null)}
-                        className="flex-1 input bg-gray-50 border-gray-200 focus:bg-white text-sm"
+                        className="flex-1 text-slate-800 text-sm border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-[#ec3724] focus:border-[#ec3724] bg-slate-50"
                       >
                         <option value="">-- Sin Tutor Asignado --</option>
                         {docentes.map((docente) => (
@@ -1079,11 +1121,11 @@ const DetalleEstudiante = () => {
                       <button
                         onClick={guardarTutorManual}
                         disabled={guardandoTutor || estudiante.inscripcion.tutorId === (tutorSeleccionado ? parseInt(tutorSeleccionado) : null)}
-                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/10 transition-all flex items-center justify-center space-x-2"
+                        className="px-4 py-2.5 bg-[#ec3724] hover:bg-[#d32010] text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center space-x-1.5 disabled:opacity-50"
                       >
                         {guardandoTutor ? (
                           <>
-                            <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                             </svg>
@@ -1091,71 +1133,69 @@ const DetalleEstudiante = () => {
                           </>
                         ) : (
                           <>
-                            <FiCheck className="h-4 w-4" />
+                            <FiCheck className="h-3.5 w-3.5" />
                             <span>Actualizar Tutor</span>
                           </>
                         )}
                       </button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Puedes modificar el tutor en cualquier momento. La auto-asignación balanceada distribuirá equitativamente los alumnos restantes sin tutor.
+                    <p className="text-[10px] font-semibold text-slate-500 mt-2 leading-relaxed">
+                      Puedes modificar el tutor asignado en cualquier momento. El balanceo de distribución automático distribuirá equitativamente alumnos restantes sin tutor.
                     </p>
                   </div>
                 )}
 
                 {/* BOTONES DE APROBACIÓN/RECHAZO DE INSCRIPCIÓN */}
                 {estudiante.inscripcion.estadoInscripcion === 'pendiente' && (
-                  <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-yellow-800 mb-1">
-                          ⏳ Inscripción pendiente de aprobación
-                        </p>
-                        <p className="text-sm text-yellow-700">
-                          Revisa los datos del estudiante y aprueba o rechaza su inscripción.
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-3 ml-4">
-                        <button
-                          onClick={() => aprobarInscripcion(estudiante.inscripcion.id)}
-                          disabled={procesando === 'inscripcion'}
-                          className="btn btn-success flex items-center space-x-2 whitespace-nowrap"
-                        >
-                          <FiCheck className="h-5 w-5" />
-                          <span>{procesando === 'inscripcion' ? 'Aprobando...' : 'Aprobar'}</span>
-                        </button>
-                        <button
-                          onClick={() => abrirModalRechazoInscripcion(estudiante.inscripcion.id)}
-                          disabled={procesando === 'inscripcion'}
-                          className="btn btn-danger flex items-center space-x-2 whitespace-nowrap"
-                        >
-                          <FiX className="h-5 w-5" />
-                          <span>Rechazar</span>
-                        </button>
-                      </div>
+                  <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-0.5">
+                        Inscripción pendiente de aprobación
+                      </p>
+                      <p className="text-xs font-semibold text-amber-700 leading-relaxed">
+                        Revisa los datos declarados y aprueba o rechaza el acceso al proceso.
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => aprobarInscripcion(estudiante.inscripcion.id)}
+                        disabled={procesando === 'inscripcion'}
+                        className="bg-[#ec3724] hover:bg-[#d32010] text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center space-x-1.5 disabled:opacity-50 whitespace-nowrap"
+                      >
+                        <FiCheck className="h-3.5 w-3.5" />
+                        <span>{procesando === 'inscripcion' ? 'Aprobando...' : 'Aprobar'}</span>
+                      </button>
+                      <button
+                        onClick={() => abrirModalRechazoInscripcion(estudiante.inscripcion.id)}
+                        disabled={procesando === 'inscripcion'}
+                        className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors border border-slate-200 flex items-center space-x-1.5 disabled:opacity-50 whitespace-nowrap"
+                      >
+                        <FiX className="h-3.5 w-3.5" />
+                        <span>Rechazar</span>
+                      </button>
                     </div>
                   </div>
                 )}
 
                 {estudiante.inscripcion.comentarioAdmin && (
-                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded">
-                    <p className="text-sm font-medium text-red-800 mb-1">
-                      Comentario del Administrador:
+                  <div className="mt-4 p-4 bg-red-55 border border-red-200 rounded-lg">
+                    <p className="text-xs font-bold text-red-800 uppercase tracking-wider mb-1">
+                      Comentario de Rechazo:
                     </p>
-                    <p className="text-sm text-red-900">
+                    <p className="text-xs font-semibold text-red-900 leading-relaxed">
                       {estudiante.inscripcion.comentarioAdmin}
                     </p>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                <FiAlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
+              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                <FiAlertCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-base font-black text-slate-800 uppercase tracking-wider mb-1">
                   Sin Inscripción
                 </h3>
-                <p className="text-gray-600">
-                  El estudiante aún no se ha inscrito a ningún convenio.
+                <p className="text-xs font-semibold text-slate-500 max-w-sm mx-auto leading-relaxed">
+                  El estudiante aún no se ha postulado a ningún convenio o cupo disponible.
                 </p>
               </div>
             )}
@@ -1165,9 +1205,9 @@ const DetalleEstudiante = () => {
               <div className="space-y-4">
                 {/* Fase 2 */}
                 {documentosPorFase(2).length > 0 && (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">
-                      📄 Fase 2: Documentos Iniciales
+                  <div className="bg-white rounded-xl border border-slate-200 p-6">
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
+                      Fase 2: Documentación Inicial del Proceso
                     </h3>
                     <div className="space-y-3">
                       {documentosPorFase(2).map((doc) => (
@@ -1187,9 +1227,9 @@ const DetalleEstudiante = () => {
 
                 {/* Fase 3 */}
                 {documentosPorFase(3).length > 0 && (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">
-                      📄 Fase 3: Respuesta de la Empresa
+                  <div className="bg-white rounded-xl border border-slate-200 p-6">
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
+                      Fase 3: Respuesta y Validación de la Contraparte
                     </h3>
                     <div className="space-y-3">
                       {documentosPorFase(3).map((doc) => (
@@ -1209,9 +1249,9 @@ const DetalleEstudiante = () => {
 
                 {/* Fase 4 */}
                 {documentosPorFase(4).length > 0 && (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">
-                      📄 Fase 4: Certificado Final
+                  <div className="bg-white rounded-xl border border-slate-200 p-6">
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
+                      Fase 4: Certificación Final de Prácticas
                     </h3>
                     <div className="space-y-3">
                       {documentosPorFase(4).map((doc) => (
@@ -1230,44 +1270,191 @@ const DetalleEstudiante = () => {
                 )}
               </div>
             )}
+
+            {/* Tareas Académicas por Ciclo - SOLO SI LA INSCRIPCIÓN ESTÁ APROBADA */}
+            {estudiante.inscripcion?.estadoInscripcion === 'aprobada' && calificaciones?.ciclos && (
+              <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-6">
+                <div className="border-b border-slate-100 pb-3">
+                  <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center">
+                    <FiBookOpen className="h-4 w-4 mr-1.5 text-slate-500" />
+                    Tareas Académicas por Ciclo
+                  </h2>
+                  <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">
+                    Visualiza las entregas y calificaciones del estudiante en cada ciclo académico.
+                  </p>
+                </div>
+
+                {/* Resumen de Calificaciones Académicas */}
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Nota Final Académica</span>
+                    <span className="text-xl font-black text-slate-800">
+                      {calificaciones.notaFinal !== null && calificaciones.notaFinal !== undefined ? Number(calificaciones.notaFinal).toFixed(2) : '--'}
+                    </span>
+                  </div>
+                  {getPromedioBase() !== null && (
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Promedio Ciclos 1 y 2</span>
+                      <span className="text-sm font-bold text-slate-700">
+                        {getPromedioBase().toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-6">
+                  {calificaciones.ciclos.map((ciclo) => (
+                    <div key={ciclo.numeroCiclo} className="space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span className="text-xs font-bold text-[#ec3724] uppercase tracking-wider">
+                          {ciclo.numeroCiclo === 3 ? 'Supletorios' : `Ciclo ${ciclo.numeroCiclo}`}
+                        </span>
+                        <span className="bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                          {ciclo.numeroCiclo === 3 ? 'Nota:' : 'Promedio:'} {ciclo.promedio !== null && ciclo.promedio !== undefined ? Number(ciclo.promedio).toFixed(2) : '--'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        {ciclo.tareas.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic">No hay tareas configuradas en este ciclo.</p>
+                        ) : (
+                          ciclo.tareas.map((tarea) => {
+                            const entrega = tarea.entrega;
+                            const isAnexoF = tarea.titulo.toLowerCase().includes('anexo f');
+                            const isAnexoB = tarea.titulo.toLowerCase().includes('anexo b');
+
+                            return (
+                              <div key={tarea.id} className="border border-slate-100 rounded-lg p-3 hover:bg-slate-50/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded uppercase">
+                                      {tarea.codigo}
+                                    </span>
+                                    <span className="font-bold text-slate-800 truncate uppercase tracking-wide">
+                                      {tarea.titulo}
+                                    </span>
+                                  </div>
+                                  
+                                  {entrega ? (
+                                    <div className="mt-1.5 space-y-1">
+                                      <p className="text-[10px] text-slate-400 font-bold uppercase">
+                                        Estado: <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-black uppercase ${
+                                          entrega.estado === 'calificada' ? 'bg-green-50 text-green-700 border border-green-150' : 'bg-amber-50 text-amber-700 border border-amber-150'
+                                        }`}>{entrega.estado === 'calificada' ? 'Revisado' : 'Pendiente'}</span>
+                                      </p>
+                                      {entrega.nombreArchivo && !isAnexoB && (
+                                        <p className="text-[10px] text-slate-500 truncate">
+                                          Archivo: <span className="font-bold">{entrega.nombreArchivo}</span>
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Sin entrega registrada</p>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center space-x-3 flex-shrink-0">
+                                  {/* Nota / Estado */}
+                                  <div className="text-right">
+                                    {isAnexoF && entrega?.estado === 'calificada' ? (
+                                      <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-250 px-2 py-1 rounded uppercase tracking-wider">
+                                        Cumplido
+                                      </span>
+                                    ) : entrega?.nota !== null && entrega?.nota !== undefined ? (
+                                      <span className="text-xs font-black text-slate-800 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded">
+                                        {Number(entrega.nota).toFixed(2)} / {Number(tarea.puntajeMaximo).toFixed(2)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-400 font-bold">—</span>
+                                    )}
+                                  </div>
+
+                                  {/* Botón de descarga */}
+                                  {entrega && (
+                                    isAnexoB ? (
+                                      <div className="flex flex-col gap-1">
+                                        {entrega.nombreArchivoInterno && (
+                                          <button
+                                            onClick={() => descargarEntregaEstudiante(entrega.id, entrega.nombreArchivoInterno, 'interno')}
+                                            className="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[9px] uppercase tracking-wider rounded border border-slate-200 transition-colors flex items-center space-x-1"
+                                            title="Descargar evaluación Tutor Interno"
+                                          >
+                                            <FiDownload className="h-3 w-3" />
+                                            <span>Interno</span>
+                                          </button>
+                                        )}
+                                        {entrega.nombreArchivoExterno && (
+                                          <button
+                                            onClick={() => descargarEntregaEstudiante(entrega.id, entrega.nombreArchivoExterno, 'externo')}
+                                            className="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[9px] uppercase tracking-wider rounded border border-slate-200 transition-colors flex items-center space-x-1"
+                                            title="Descargar evaluación Tutor Externo"
+                                          >
+                                            <FiDownload className="h-3 w-3" />
+                                            <span>Externo</span>
+                                          </button>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      entrega.nombreArchivo && (
+                                        <button
+                                          onClick={() => descargarEntregaEstudiante(entrega.id, entrega.nombreArchivo)}
+                                          className="bg-white hover:bg-slate-50 text-slate-700 font-bold p-1.5 rounded border border-slate-200 transition-colors"
+                                          title="Descargar archivo"
+                                        >
+                                          <FiDownload className="h-4 w-4" />
+                                        </button>
+                                      )
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Modal de rechazo (para documentos e inscripción) */}
         {modalRechazo.abierto && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {modalRechazo.tipo === 'inscripcion' ? 'Rechazar Inscripción' : 'Rechazar Documento'}
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl border border-slate-200 max-w-md w-full p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                  {modalRechazo.tipo === 'inscripcion' ? 'Rechazar Postulación' : 'Rechazar Documento'}
                 </h2>
                 <button
                   onClick={() =>
                     setModalRechazo({ abierto: false, documentoId: null, tipo: 'documento' })
                   }
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
                 >
-                  <FiX className="h-6 w-6" />
+                  <FiX className="h-5 w-5" />
                 </button>
               </div>
 
               {modalRechazo.tipo === 'documento' && (
                 <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">
-                    Documento: <strong>{modalRechazo.tipoDocumento}</strong>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Archivo: <strong className="text-slate-800">{modalRechazo.tipoDocumento}</strong>
                   </p>
                 </div>
               )}
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Motivo del rechazo *
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Motivo de Rechazo *
                 </label>
                 <textarea
                   value={motivoRechazo}
                   onChange={(e) => setMotivoRechazo(e.target.value)}
                   rows="4"
-                  className="input"
+                  className="w-full text-slate-800 text-sm border border-slate-200 rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-[#ec3724] focus:border-[#ec3724] placeholder-slate-400 bg-slate-50"
                   placeholder={
                     modalRechazo.tipo === 'inscripcion'
                       ? 'Explica por qué se rechaza la inscripción (será enviado al estudiante)'
@@ -1281,13 +1468,13 @@ const DetalleEstudiante = () => {
                   onClick={() =>
                     setModalRechazo({ abierto: false, documentoId: null, tipo: 'documento' })
                   }
-                  className="flex-1 btn btn-secondary"
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors border border-slate-200"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={modalRechazo.tipo === 'inscripcion' ? rechazarInscripcion : rechazarDocumento}
-                  className="flex-1 btn btn-danger"
+                  className="flex-1 bg-[#ec3724] hover:bg-[#d32010] text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors"
                   disabled={!motivoRechazo.trim() || procesando}
                 >
                   {procesando ? 'Procesando...' : 'Rechazar'}
@@ -1313,37 +1500,38 @@ const DocumentoItem = ({
   const badge = getEstadoDocBadge(documento.estado);
 
   return (
-    <div className="border border-gray-200 rounded-lg p-4">
+    <div className="border border-slate-200 rounded-lg p-4 hover:border-slate-350 transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3 flex-1 pr-2 sm:pr-6">
-          <FiFileText className="h-5 w-5 text-gray-400 flex-shrink-0" />
+        <div className="flex items-center space-x-3 flex-1 pr-2 sm:pr-6 min-w-0">
+          <FiFileText className="h-5 w-5 text-slate-400 flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900 truncate">
+            <p className="font-bold text-slate-800 text-sm truncate">
               {documento.tipoDocumento}
             </p>
-            <p className="text-xs text-gray-500 whitespace-nowrap">
-              Subido el{' '}
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+              Subido:{' '}
               {format(new Date(documento.fechaSubida), "d 'de' MMMM, yyyy 'a las' HH:mm", {
                 locale: es,
               })}
             </p>
             {documento.estado === 'rechazado' && documento.comentarioAdmin && (
-              <p className="text-sm text-red-600 mt-1">
+              <p className="text-xs text-red-650 font-semibold mt-1">
                 <strong>Motivo de rechazo:</strong> {documento.comentarioAdmin}
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 flex-wrap sm:flex-nowrap justify-start sm:justify-end">
-          <span className={`badge ${badge.color} flex-shrink-0`}>
-            <badge.icon className="h-4 w-4 mr-1" />
+        <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap justify-start sm:justify-end flex-shrink-0">
+          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+            documento.estado === 'aprobado' ? 'bg-green-55 text-green-700' : documento.estado === 'pendiente' ? 'bg-amber-55 text-amber-700' : 'bg-red-55 text-red-700'
+          } flex-shrink-0`}>
             {badge.texto}
           </span>
 
           <button
             onClick={() => onDescargar(documento.id, documento.nombreArchivo)}
-            className="btn btn-secondary btn-sm flex items-center space-x-1"
+            className="bg-white hover:bg-slate-50 text-slate-700 font-bold p-2 rounded border border-slate-200 transition-colors"
             title="Descargar documento"
           >
             <FiDownload className="h-4 w-4" />
@@ -1354,19 +1542,19 @@ const DocumentoItem = ({
               <button
                 onClick={() => onAprobar(documento.id, documento.tipoDocumento)}
                 disabled={procesando === documento.id}
-                className="btn btn-success btn-sm flex items-center space-x-1"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded text-xs uppercase tracking-wider transition-colors flex items-center space-x-1"
                 title="Aprobar documento"
               >
-                <FiCheck className="h-4 w-4" />
+                <FiCheck className="h-3.5 w-3.5" />
                 <span>{procesando === documento.id ? 'Aprobando...' : 'Aprobar'}</span>
               </button>
               <button
                 onClick={() => onRechazar(documento.id, documento.tipoDocumento)}
                 disabled={procesando === documento.id}
-                className="btn btn-danger btn-sm flex items-center space-x-1"
+                className="bg-[#ec3724] hover:bg-[#d32010] text-white font-bold py-1.5 px-3 rounded text-xs uppercase tracking-wider transition-colors flex items-center space-x-1"
                 title="Rechazar documento"
               >
-                <FiX className="h-4 w-4" />
+                <FiX className="h-3.5 w-3.5" />
                 <span>Rechazar</span>
               </button>
             </>
