@@ -26,9 +26,13 @@ const GestionConvenios = () => {
   const [conveniosFiltrados, setConveniosFiltrados] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const conveniosPorPagina = 9;
   const [modalAbierto, setModalAbierto] = useState(false);
   const [convenioEditando, setConvenioEditando] = useState(null);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmCancelPrevisualizacion, setConfirmCancelPrevisualizacion] = useState(false);
 
   // Estados para Carga Masiva desde Excel
   const [modoPrevisualizacion, setModoPrevisualizacion] = useState(false);
@@ -364,6 +368,7 @@ const GestionConvenios = () => {
   };
 
   const filtrarConvenios = () => {
+    setPaginaActual(1);
     if (!busqueda.trim()) {
       setConveniosFiltrados(convenios);
       return;
@@ -390,15 +395,11 @@ const GestionConvenios = () => {
     setMensaje({ tipo: '', texto: '' });
   };
 
-  const eliminarConvenio = async (id, nombreEmpresa) => {
-    if (
-      !window.confirm(
-        `¿Estás seguro de eliminar el convenio con "${nombreEmpresa}"?`
-      )
-    ) {
-      return;
-    }
+  const eliminarConvenio = (id, nombreEmpresa) => {
+    setConfirmDelete({ id, nombreEmpresa });
+  };
 
+  const ejecutarEliminacionConvenio = async (id) => {
     try {
       await api.delete(`/convenios/${id}`);
       cargarConvenios();
@@ -493,15 +494,7 @@ const GestionConvenios = () => {
               )}
 
               <button
-                onClick={() => {
-                  if (window.confirm('¿Estás seguro de cancelar? Se descartarán todos los datos cargados.')) {
-                    setModoPrevisualizacion(false);
-                    setDatosPrevisualizacion([]);
-                    setHojasCompatibles([]);
-                    setSheetsDataReferencia({});
-                    setMensaje({ tipo: '', texto: '' });
-                  }
-                }}
+                onClick={() => setConfirmCancelPrevisualizacion(true)}
                 className="inline-flex items-center justify-center px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all"
                 disabled={guardandoMasivo}
               >
@@ -671,8 +664,12 @@ const GestionConvenios = () => {
                           <input
                             type="number"
                             min="0"
-                            value={row.cuposLaboralesTotales}
-                            onChange={(e) => handleCellChange(row.id, 'cuposLaboralesTotales', parseInt(e.target.value) || 0)}
+                            value={row.cuposLaboralesTotales === 0 ? '' : row.cuposLaboralesTotales}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const parsed = val === '' ? 0 : parseInt(val, 10);
+                              handleCellChange(row.id, 'cuposLaboralesTotales', isNaN(parsed) ? 0 : parsed);
+                            }}
                             className="w-14 bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-[#ec3724] py-1 text-[11px] text-center font-black text-slate-900"
                           />
                         </td>
@@ -682,8 +679,12 @@ const GestionConvenios = () => {
                           <input
                             type="number"
                             min="0"
-                            value={row.cuposComunitariosTotales}
-                            onChange={(e) => handleCellChange(row.id, 'cuposComunitariosTotales', parseInt(e.target.value) || 0)}
+                            value={row.cuposComunitariosTotales === 0 ? '' : row.cuposComunitariosTotales}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const parsed = val === '' ? 0 : parseInt(val, 10);
+                              handleCellChange(row.id, 'cuposComunitariosTotales', isNaN(parsed) ? 0 : parsed);
+                            }}
                             className="w-14 bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-[#ec3724] py-1 text-[11px] text-center font-black text-slate-900"
                           />
                         </td>
@@ -693,7 +694,12 @@ const GestionConvenios = () => {
                           <input
                             type="text"
                             value={row.contacto}
-                            onChange={(e) => handleCellChange(row.id, 'contacto', e.target.value)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/.test(val)) {
+                                handleCellChange(row.id, 'contacto', val);
+                              }
+                            }}
                             className="w-full bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-[#ec3724] px-1 py-1 text-[11px] text-slate-900"
                             placeholder="Tutor/Representante"
                           />
@@ -704,7 +710,12 @@ const GestionConvenios = () => {
                           <input
                             type="text"
                             value={row.telefono}
-                            onChange={(e) => handleCellChange(row.id, 'telefono', e.target.value)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (/^[0-9]*$/.test(val)) {
+                                handleCellChange(row.id, 'telefono', val);
+                              }
+                            }}
                             className="w-full bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-[#ec3724] px-1 py-1 text-[11px] text-slate-900"
                             placeholder="Celular/Convencional"
                           />
@@ -758,6 +769,11 @@ const GestionConvenios = () => {
     );
   }
 
+
+  const totalPaginas = Math.ceil(conveniosFiltrados.length / conveniosPorPagina);
+  const indiceUltimoConvenio = paginaActual * conveniosPorPagina;
+  const indicePrimerConvenio = indiceUltimoConvenio - conveniosPorPagina;
+  const conveniosPaginados = conveniosFiltrados.slice(indicePrimerConvenio, indiceUltimoConvenio);
 
   return (
     <div className="min-h-screen bg-slate-50 animate-fadeIn">
@@ -831,7 +847,7 @@ const GestionConvenios = () => {
               </p>
             </div>
           ) : (
-            conveniosFiltrados.map((convenio) => (
+            conveniosPaginados.map((convenio) => (
               <div
                 key={convenio.id}
                 className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all p-5 flex flex-col justify-between space-y-4"
@@ -1011,6 +1027,28 @@ const GestionConvenios = () => {
           )}
         </div>
 
+        {totalPaginas > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-8 pt-4 border-t border-slate-200">
+            <button
+              onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+              disabled={paginaActual === 1}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+            >
+              Anterior
+            </button>
+            <span className="text-xs font-black text-slate-500 uppercase tracking-wider px-2">
+              Página {paginaActual} de {totalPaginas}
+            </span>
+            <button
+              onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
+              disabled={paginaActual === totalPaginas}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
+
         {/* Modal */}
         {modalAbierto && (
           <ModalConvenio
@@ -1019,6 +1057,86 @@ const GestionConvenios = () => {
             actualizar={cargarConvenios}
             setMensaje={setMensaje}
           />
+        )}
+
+        {/* Modal de Confirmar Eliminación */}
+        {confirmDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full overflow-hidden animate-scaleUp">
+              <div className="p-6 space-y-4">
+                <div className="flex items-center gap-3 text-red-650">
+                  <div className="p-2 bg-red-50 rounded-lg">
+                    <FiTrash2 className="h-6 w-6 text-[#ec3724]" />
+                  </div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                    Confirmar Eliminación
+                  </h3>
+                </div>
+                <p className="text-xs font-semibold text-slate-500 leading-relaxed">
+                  ¿Estás seguro de que deseas eliminar el convenio con <strong className="text-slate-800">"{confirmDelete.nombreEmpresa}"</strong>? Esta acción no se puede deshacer.
+                </p>
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    onClick={() => setConfirmDelete(null)}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-700 font-bold text-[10px] uppercase tracking-wider transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => {
+                      ejecutarEliminacionConvenio(confirmDelete.id);
+                      setConfirmDelete(null);
+                    }}
+                    className="px-4 py-2 bg-[#ec3724] hover:bg-[#c22d1e] text-white rounded-lg font-bold text-[10px] uppercase tracking-wider shadow-sm transition-all"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Cancelar Previsualización */}
+        {confirmCancelPrevisualizacion && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full overflow-hidden animate-scaleUp">
+              <div className="p-6 space-y-4">
+                <div className="flex items-center gap-3 text-amber-500">
+                  <div className="p-2 bg-amber-50 rounded-lg">
+                    <FiAlertCircle className="h-6 w-6 text-amber-500" />
+                  </div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                    Cancelar Importación
+                  </h3>
+                </div>
+                <p className="text-xs font-semibold text-slate-500 leading-relaxed">
+                  ¿Estás seguro de que deseas cancelar la importación? Se descartarán todos los datos cargados desde el archivo Excel.
+                </p>
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    onClick={() => setConfirmCancelPrevisualizacion(false)}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-700 font-bold text-[10px] uppercase tracking-wider transition-all"
+                  >
+                    No, continuar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setConfirmCancelPrevisualizacion(false);
+                      setModoPrevisualizacion(false);
+                      setDatosPrevisualizacion([]);
+                      setHojasCompatibles([]);
+                      setSheetsDataReferencia({});
+                      setMensaje({ tipo: '', texto: '' });
+                    }}
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider shadow-sm transition-all"
+                  >
+                    Sí, cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -1053,10 +1171,14 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
       nuevosErrores.area = 'El área es requerida';
     }
 
+    const labVal = formData.cuposLaboralesTotales === '' ? 0 : parseInt(formData.cuposLaboralesTotales, 10);
+    const comVal = formData.cuposComunitariosTotales === '' ? 0 : parseInt(formData.cuposComunitariosTotales, 10);
+
     if (
       formData.cuposLaboralesTotales === undefined ||
       formData.cuposLaboralesTotales === null ||
-      formData.cuposLaboralesTotales < 0
+      isNaN(labVal) ||
+      labVal < 0
     ) {
       nuevosErrores.cuposLaboralesTotales = 'Los cupos no pueden ser negativos';
     }
@@ -1064,16 +1186,17 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
     if (
       formData.cuposComunitariosTotales === undefined ||
       formData.cuposComunitariosTotales === null ||
-      formData.cuposComunitariosTotales < 0
+      isNaN(comVal) ||
+      comVal < 0
     ) {
       nuevosErrores.cuposComunitariosTotales = 'Los cupos no pueden ser negativos';
     }
 
     if (convenio) {
-      if (formData.cuposLaboralesTotales < (convenio.cuposLaboralesOcupados || 0)) {
+      if (labVal < (convenio.cuposLaboralesOcupados || 0)) {
         nuevosErrores.cuposLaboralesTotales = `No puedes reducir los cupos a menos de ${convenio.cuposLaboralesOcupados} (cupos ocupados actuales)`;
       }
-      if (formData.cuposComunitariosTotales < (convenio.cuposComunitariosOcupados || 0)) {
+      if (comVal < (convenio.cuposComunitariosOcupados || 0)) {
         nuevosErrores.cuposComunitariosTotales = `No puedes reducir los cupos a menos de ${convenio.cuposComunitariosOcupados} (cupos ocupados actuales)`;
       }
     }
@@ -1089,17 +1212,23 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
 
     setGuardando(true);
 
+    const payload = {
+      ...formData,
+      cuposLaboralesTotales: formData.cuposLaboralesTotales === '' ? 0 : parseInt(formData.cuposLaboralesTotales, 10),
+      cuposComunitariosTotales: formData.cuposComunitariosTotales === '' ? 0 : parseInt(formData.cuposComunitariosTotales, 10),
+    };
+
     try {
       if (convenio) {
         // Editar
-        await api.put(`/convenios/${convenio.id}`, formData);
+        await api.put(`/convenios/${convenio.id}`, payload);
         setMensaje({
           tipo: 'success',
           texto: 'Convenio actualizado exitosamente',
         });
       } else {
         // Crear
-        await api.post('/convenios', formData);
+        await api.post('/convenios', payload);
         setMensaje({
           tipo: 'success',
           texto: 'Convenio creado exitosamente',
@@ -1198,7 +1327,12 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
                 <input
                   type="text"
                   value={formData.contacto}
-                  onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/.test(val)) {
+                      setFormData({ ...formData, contacto: val });
+                    }
+                  }}
                   className="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
                   placeholder="Ej. Ing. Luis Miguel Santillán"
                 />
@@ -1212,9 +1346,14 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
                 <input
                   type="text"
                   value={formData.telefono}
-                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^[0-9]*$/.test(val)) {
+                      setFormData({ ...formData, telefono: val });
+                    }
+                  }}
                   className="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
-                  placeholder="Ej. 099 266 9635"
+                  placeholder="Ej. 0992669635"
                 />
               </div>
 
@@ -1225,10 +1364,16 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
                 </label>
                 <input
                   type="number"
-                  value={formData.cuposLaboralesTotales}
-                  onChange={(e) =>
-                    setFormData({ ...formData, cuposLaboralesTotales: parseInt(e.target.value) || 0 })
-                  }
+                  value={formData.cuposLaboralesTotales === 0 ? '' : formData.cuposLaboralesTotales}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      setFormData({ ...formData, cuposLaboralesTotales: '' });
+                    } else {
+                      const num = parseInt(val, 10);
+                      setFormData({ ...formData, cuposLaboralesTotales: isNaN(num) ? 0 : num });
+                    }
+                  }}
                   min="0"
                   className={`w-full border rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-bold text-slate-800 ${errors.cuposLaboralesTotales ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
                 />
@@ -1244,10 +1389,16 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
                 </label>
                 <input
                   type="number"
-                  value={formData.cuposComunitariosTotales}
-                  onChange={(e) =>
-                    setFormData({ ...formData, cuposComunitariosTotales: parseInt(e.target.value) || 0 })
-                  }
+                  value={formData.cuposComunitariosTotales === 0 ? '' : formData.cuposComunitariosTotales}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      setFormData({ ...formData, cuposComunitariosTotales: '' });
+                    } else {
+                      const num = parseInt(val, 10);
+                      setFormData({ ...formData, cuposComunitariosTotales: isNaN(num) ? 0 : num });
+                    }
+                  }}
                   min="0"
                   className={`w-full border rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-bold text-slate-800 ${errors.cuposComunitariosTotales ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
                 />

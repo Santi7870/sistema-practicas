@@ -6,7 +6,7 @@ const { crearNotificacion } = require('../utils/notificaciones');
 // Registrar nuevo estudiante
 const register = async (req, res) => {
   try {
-    const { email, password, confirmPassword } = req.body;
+    let { email, password, confirmPassword } = req.body;
 
     // Validaciones
     if (!email || !password || !confirmPassword) {
@@ -15,6 +15,8 @@ const register = async (req, res) => {
         message: 'Todos los campos son requeridos',
       });
     }
+
+    email = email.trim().toLowerCase();
 
     // Validar formato de email institucional
     if (!email.endsWith('@espoch.edu.ec')) {
@@ -94,7 +96,7 @@ const register = async (req, res) => {
 // Login de usuario
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
 
     // Validaciones
     if (!email || !password) {
@@ -103,6 +105,8 @@ const login = async (req, res) => {
         message: 'Email y contraseña son requeridos',
       });
     }
+
+    email = email.trim().toLowerCase();
 
     // Buscar usuario con su estudiante o docente asociado
     const usuarioEncontrado = await Usuario.findOne({
@@ -179,6 +183,7 @@ const login = async (req, res) => {
       rol: usuarioEncontrado.rol,
       estadoCuenta: usuarioEncontrado.estadoCuenta,
       debeCambiarPassword: usuarioEncontrado.debeCambiarPassword,
+      nombres: usuarioEncontrado.nombres,
     };
 
     // Preparar datos del estudiante si existe
@@ -284,7 +289,7 @@ const logout = async (req, res) => {
 // Cambiar contraseña obligatoria por primer ingreso
 const cambiarPasswordObligatorio = async (req, res) => {
   try {
-    const { email, password, confirmPassword } = req.body;
+    let { email, password, confirmPassword } = req.body;
 
     if (!email || !password || !confirmPassword) {
       return res.status(400).json({
@@ -292,6 +297,8 @@ const cambiarPasswordObligatorio = async (req, res) => {
         message: 'Todos los campos son requeridos',
       });
     }
+
+    email = email.trim().toLowerCase();
 
     if (password !== confirmPassword) {
       return res.status(400).json({

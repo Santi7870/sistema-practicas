@@ -17,10 +17,11 @@ router.get('/estudiantes/:estudianteId', docenteController.obtenerDetalleEstudia
 router.put('/documentos/:documentoId/revisar', docenteController.revisarDocumento);
 
 // Módulo académico por ciclos/tareas
-router.post('/tareas', tareaController.crearTarea);
+router.post('/tareas', upload.single('plantilla'), tareaController.crearTarea);
 router.get('/tareas', tareaController.listarTareas);
-router.put('/tareas/:tareaId', tareaController.editarTarea);
+router.put('/tareas/:tareaId', upload.single('plantilla'), tareaController.editarTarea);
 router.delete('/tareas/:tareaId', tareaController.eliminarTarea);
+router.get('/tareas/:tareaId/descargar-plantilla', tareaController.descargarPlantillaTarea);
 router.get('/tareas/:tareaId/entregas', tareaController.verEntregasDeTarea);
 router.post('/tareas/:tareaId/estudiantes/:inscripcionId/entregar', upload.single('archivo'), tareaController.entregarTareaPorDocente);
 router.put('/entregas/:entregaId/calificar', tareaController.calificarEntrega);

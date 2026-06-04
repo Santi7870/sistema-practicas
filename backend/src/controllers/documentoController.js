@@ -4,6 +4,7 @@ const {
   Estudiante,
   Usuario,
   Notificacion,
+  Docente,
 } = require('../models');
 const {
   TIPOS_DOCUMENTOS,
@@ -564,13 +565,43 @@ const descargarDocumento = async (req, res) => {
   try {
     const { documentoId } = req.params;
 
-    const documento = await Documento.findByPk(documentoId);
+    const documento = await Documento.findByPk(documentoId, {
+      include: [
+        {
+          model: Inscripcion,
+          as: 'inscripcion',
+        },
+      ],
+    });
 
     if (!documento) {
       return res.status(404).json({
         success: false,
         message: 'Documento no encontrado.',
       });
+    }
+
+    // Validar permisos según rol
+    if (req.usuario.rol === 'docente') {
+      const docente = await Docente.findOne({ where: { usuarioId: req.usuario.id } });
+      if (!docente) {
+        return res.status(404).json({ success: false, message: 'Perfil de docente no encontrado.' });
+      }
+
+      if (!documento.inscripcion || documento.inscripcion.tutorId !== docente.id || !documento.inscripcion.activa) {
+        return res.status(403).json({
+          success: false,
+          message: 'Acceso denegado. Este estudiante no está asignado bajo tu tutoría activa.',
+        });
+      }
+    } else if (req.usuario.rol === 'estudiante') {
+      const estudiante = await Estudiante.findOne({ where: { usuarioId: req.usuario.id } });
+      if (!estudiante || !documento.inscripcion || documento.inscripcion.estudianteId !== estudiante.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Acceso denegado. No puedes descargar documentos de otros estudiantes.',
+        });
+      }
     }
 
     // Verificar que el archivo existe

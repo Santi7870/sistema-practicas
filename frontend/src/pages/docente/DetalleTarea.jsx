@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   FiDownload, 
   FiEye, 
@@ -15,6 +15,8 @@ import api from '../../services/api';
 
 const DetalleTarea = () => {
   const { tareaId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [data, setData] = useState({ tarea: null, entregas: [], sinEntregar: [] });
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
@@ -177,7 +179,7 @@ const DetalleTarea = () => {
       const cleanNota = String(formNota).replace(',', '.');
       const notaValor = parseFloat(cleanNota);
       if (isNaN(notaValor) || notaValor < 0 || notaValor > (data.tarea?.puntajeMaximo || 10)) {
-        alert(`La nota debe ser un número válido entre 0 y ${data.tarea?.puntajeMaximo || 10}.`);
+        setError(`La nota debe ser un número válido entre 0 y ${data.tarea?.puntajeMaximo || 10}.`);
         setCargandoGuardado(false);
         return;
       }
@@ -240,7 +242,7 @@ const DetalleTarea = () => {
       const cleanNota = String(notaStr).replace(',', '.');
       const notaValor = parseFloat(cleanNota);
       if (isNaN(notaValor) || notaValor < 0 || notaValor > (data.tarea?.puntajeMaximo || 10)) {
-        alert(`La nota debe ser un número válido entre 0 y ${data.tarea?.puntajeMaximo || 10}.`);
+        setError(`La nota debe ser un número válido entre 0 y ${data.tarea?.puntajeMaximo || 10}.`);
         setCargandoGuardado(false);
         return;
       }
@@ -319,7 +321,7 @@ const DetalleTarea = () => {
         : entrega.nombreArchivo;
       descargarBlob(blob, nombre || `entrega-${entrega.id}`);
     } catch (err) {
-      alert('No se pudo descargar el archivo.');
+      setError('No se pudo descargar el archivo.');
     }
   };
 
@@ -336,14 +338,20 @@ const DetalleTarea = () => {
       <div className="flex-1 max-w-7xl w-full mx-auto px-4 py-6 space-y-6">
         {/* Enlace de navegación trasera */}
         <div className="flex items-center justify-between">
-          <Link
-            to="/docente/ciclos"
+          <button
+            onClick={() => {
+              if (location.state?.from) {
+                navigate(location.state.from);
+              } else {
+                navigate('/docente/ciclos');
+              }
+            }}
             id="link-volver-ciclos"
-            className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-[#ec3724] transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
           >
-            <FiArrowLeft className="w-4 h-4" />
-            <span>Volver a Ciclos y Tareas</span>
-          </Link>
+            <FiArrowLeft className="w-4 h-4 text-slate-500" />
+            <span>Volver</span>
+          </button>
         </div>
 
         {/* Tarjeta de Encabezado Premium */}
@@ -516,10 +524,10 @@ const DetalleTarea = () => {
                                       await api.post(`/docente/tareas/${tareaId}/estudiantes/${e.inscripcionId}/entregar`, formData, {
                                         headers: { 'Content-Type': 'multipart/form-data' }
                                       });
-                                      alert('Anexo F actualizado con éxito.');
+                                      setMensajeExito('Anexo F actualizado con éxito ✓');
                                       await cargar();
                                     } catch (err) {
-                                      alert(err?.response?.data?.message || err?.message || 'Error al actualizar Anexo F');
+                                      setError(err?.response?.data?.message || err?.message || 'Error al actualizar Anexo F');
                                     } finally {
                                       setCargando(false);
                                     }
@@ -617,10 +625,10 @@ const DetalleTarea = () => {
                               await api.post(`/docente/tareas/${tareaId}/estudiantes/${i.id}/entregar`, formData, {
                                 headers: { 'Content-Type': 'multipart/form-data' }
                               });
-                              alert('Anexo F subido con éxito.');
+                              setMensajeExito('Anexo F subido con éxito ✓');
                               await cargar();
                             } catch (err) {
-                              alert(err?.response?.data?.message || err?.message || 'Error al subir Anexo F');
+                              setError(err?.response?.data?.message || err?.message || 'Error al subir Anexo F');
                             } finally {
                               setCargando(false);
                             }
@@ -746,6 +754,9 @@ const DetalleTarea = () => {
                     {getInitials(activeEntrega.inscripcion?.estudiante?.nombres)}
                   </div>
                   <div className="min-w-0">
+                    <span className="block text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">
+                      Detalle de Entrega y Calificación Completa
+                    </span>
                     <h4 className="font-bold text-slate-850 truncate text-xs leading-snug">
                       {activeEntrega.inscripcion?.estudiante?.nombres || 'Sin nombre'}
                     </h4>
@@ -765,6 +776,12 @@ const DetalleTarea = () => {
 
               {/* Cuerpo del Formulario */}
               <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {error && (
+                  <div className="bg-rose-50 border border-rose-100 rounded-lg p-3 text-xs font-semibold text-rose-700 flex items-center gap-2">
+                    <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
                 {/* Información de la Asignación */}
                 <div className="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm">
                   <span className="text-[9px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded uppercase tracking-widest inline-block">
@@ -982,33 +999,45 @@ const DetalleTarea = () => {
                           <div className="relative rounded shadow-sm">
                             <input
                               type="number"
-                              step="0.1"
+                              step="0.01"
                               min="0"
                               max="10"
-                              className="block w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-slate-900 font-bold focus:outline-none focus:ring-1 focus:ring-[#ec3724] text-xs"
+                              className={`block w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-slate-900 font-bold focus:outline-none focus:ring-1 focus:ring-[#ec3724] text-xs ${
+                                subTareaPreview !== 'interno' ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''
+                              }`}
                               placeholder="0.00"
                               value={formNotaInterno}
                               onChange={(ev) => setFormNotaInterno(ev.target.value)}
+                              disabled={subTareaPreview !== 'interno'}
                             />
                             <span className="absolute inset-y-0 right-3 flex items-center text-[10px] text-slate-400 font-bold">/ 10 pts</span>
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Retroalimentación Interno</label>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest">Retroalimentación Interno</label>
+                            <span className="text-[9px] font-bold text-slate-400">{formComentarioInterno.length} / 1000</span>
+                          </div>
                           <textarea
                             rows={2}
-                            className="block w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-[#ec3724] text-xs"
+                            maxLength={1000}
+                            className={`block w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-[#ec3724] text-xs ${
+                              subTareaPreview !== 'interno' ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''
+                            }`}
                             placeholder="Escribe observaciones para el Tutor Interno..."
                             value={formComentarioInterno}
                             onChange={(ev) => setFormComentarioInterno(ev.target.value)}
+                            disabled={subTareaPreview !== 'interno'}
                           />
                         </div>
 
                         <button
                           onClick={() => enviarCalificacionSubTarea('interno')}
-                          disabled={cargandoGuardado}
-                          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs transition disabled:opacity-50"
+                          disabled={cargandoGuardado || subTareaPreview !== 'interno'}
+                          className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs transition disabled:opacity-50 ${
+                            subTareaPreview !== 'interno' ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
                           Guardar Calificación Interno
                         </button>
@@ -1044,33 +1073,45 @@ const DetalleTarea = () => {
                           <div className="relative rounded shadow-sm">
                             <input
                               type="number"
-                              step="0.1"
+                              step="0.01"
                               min="0"
                               max="10"
-                              className="block w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-slate-900 font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                              className={`block w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-slate-900 font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs ${
+                                subTareaPreview !== 'externo' ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''
+                              }`}
                               placeholder="0.00"
                               value={formNotaExterno}
                               onChange={(ev) => setFormNotaExterno(ev.target.value)}
+                              disabled={subTareaPreview !== 'externo'}
                             />
                             <span className="absolute inset-y-0 right-3 flex items-center text-[10px] text-slate-400 font-bold">/ 10 pts</span>
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Retroalimentación Externo</label>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest">Retroalimentación Externo</label>
+                            <span className="text-[9px] font-bold text-slate-400">{formComentarioExterno.length} / 1000</span>
+                          </div>
                           <textarea
                             rows={2}
-                            className="block w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                            maxLength={1000}
+                            className={`block w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs ${
+                              subTareaPreview !== 'externo' ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''
+                            }`}
                             placeholder="Escribe observaciones para el Tutor Externo..."
                             value={formComentarioExterno}
                             onChange={(ev) => setFormComentarioExterno(ev.target.value)}
+                            disabled={subTareaPreview !== 'externo'}
                           />
                         </div>
 
                         <button
                           onClick={() => enviarCalificacionSubTarea('externo')}
-                          disabled={cargandoGuardado}
-                          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs transition disabled:opacity-50"
+                          disabled={cargandoGuardado || subTareaPreview !== 'externo'}
+                          className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs transition disabled:opacity-50 ${
+                            subTareaPreview !== 'externo' ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
                           Guardar Calificación Externo
                         </button>
@@ -1086,11 +1127,11 @@ const DetalleTarea = () => {
                       <div className="relative rounded shadow-sm">
                         <input
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0"
                           max={data.tarea?.puntajeMaximo || 10}
                           id="input-calificacion-nota"
-                          className="block w-full rounded border border-slate-350 bg-white px-3 py-2.5 text-slate-900 font-extrabold focus:border-[#ec3724] focus:outline-none focus:ring-1 focus:ring-[#ec3724] text-xs placeholder-slate-400"
+                          className="block w-full rounded border border-slate-355 bg-white px-3 py-2.5 text-slate-900 font-extrabold focus:border-[#ec3724] focus:outline-none focus:ring-1 focus:ring-[#ec3724] text-xs placeholder-slate-400"
                           placeholder="0.00"
                           value={formNota}
                           onChange={(ev) => setFormNota(ev.target.value)}
@@ -1104,11 +1145,15 @@ const DetalleTarea = () => {
                     </div>
 
                     <div>
-                      <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Retroalimentación
-                      </label>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                          Retroalimentación
+                        </label>
+                        <span className="text-[9px] font-bold text-slate-400">{formComentario.length} / 1000</span>
+                      </div>
                       <textarea
                         rows={4}
+                        maxLength={1000}
                         id="input-calificacion-comentario"
                         className="block w-full rounded border border-slate-350 bg-white px-3 py-2.5 text-slate-800 font-semibold focus:border-[#ec3724] focus:outline-none focus:ring-1 focus:ring-[#ec3724] text-xs placeholder-slate-400"
                         placeholder="Escribe la retroalimentación para el estudiante..."

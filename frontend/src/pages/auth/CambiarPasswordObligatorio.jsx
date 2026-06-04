@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FiLock, FiAlertCircle } from 'react-icons/fi';
+import { FiLock, FiAlertCircle, FiEye, FiEyeOff } from 'react-icons/fi';
 import api from '../../services/api';
 
 const CambiarPasswordObligatorio = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [mostrarConfirmPassword, setMostrarConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
   const [exito, setExito] = useState(false);
@@ -32,7 +34,7 @@ const CambiarPasswordObligatorio = () => {
 
     try {
       const response = await api.post('/auth/cambiar-password-obligatorio', {
-        email: usuario.email,
+        email: usuario.email.trim().toLowerCase(),
         password,
         confirmPassword,
       });
@@ -101,7 +103,7 @@ const CambiarPasswordObligatorio = () => {
                 </div>
               )}
 
-              <div>
+               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                   Nueva Contraseña Definitiva
                 </label>
@@ -110,13 +112,24 @@ const CambiarPasswordObligatorio = () => {
                     <FiLock className="h-4 w-4 text-slate-400" />
                   </div>
                   <input
-                    type="password"
+                    type={mostrarPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#ec3724] focus:border-[#ec3724] text-slate-800 placeholder-slate-400 focus:outline-none transition duration-200 shadow-sm"
+                    className="w-full pl-9 pr-10 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#ec3724] focus:border-[#ec3724] text-slate-800 placeholder-slate-400 focus:outline-none transition duration-200 shadow-sm"
                     placeholder="Mínimo 6 caracteres"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarPassword(!mostrarPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                  >
+                    {mostrarPassword ? (
+                      <FiEyeOff className="h-4 w-4" />
+                    ) : (
+                      <FiEye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -129,13 +142,24 @@ const CambiarPasswordObligatorio = () => {
                     <FiLock className="h-4 w-4 text-slate-400" />
                   </div>
                   <input
-                    type="password"
+                    type={mostrarConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#ec3724] focus:border-[#ec3724] text-slate-800 placeholder-slate-400 focus:outline-none transition duration-200 shadow-sm"
+                    className="w-full pl-9 pr-10 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#ec3724] focus:border-[#ec3724] text-slate-800 placeholder-slate-400 focus:outline-none transition duration-200 shadow-sm"
                     placeholder="Repite la contraseña"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarConfirmPassword(!mostrarConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                  >
+                    {mostrarConfirmPassword ? (
+                      <FiEyeOff className="h-4 w-4" />
+                    ) : (
+                      <FiEye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 

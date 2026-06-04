@@ -26,6 +26,7 @@ router.get('/dashboard', adminController.obtenerEstadisticas);
 // Gestión de Docentes y asignaciones
 router.post('/docentes', adminController.crearDocente);
 router.get('/docentes', adminController.obtenerDocentes);
+router.put('/docentes/:docenteId', adminController.actualizarDocente);
 router.post('/docentes/auto-asignar', adminController.autoAsignarTutores);
 router.put('/estudiantes/:estudianteId/asignar-tutor', adminController.asignarTutorManual);
 

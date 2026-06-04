@@ -32,7 +32,7 @@ api.interceptors.response.use(
       // El servidor respondió con un código de error
       const { status, data } = error.response;
 
-      if (status === 401) {
+      if (status === 401 && !error.config.url.includes('/auth/login')) {
         // Token inválido o expirado
         localStorage.removeItem('token');
         localStorage.removeItem('usuario');

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import Navbar from '../../components/Navbar';
 import api from '../../services/api';
-import { Link } from 'react-router-dom';
-import { FiUser, FiSearch, FiChevronRight, FiFilter, FiActivity } from 'react-icons/fi';
+import { Link, useLocation } from 'react-router-dom';
+import { FiUser, FiSearch, FiChevronRight, FiFilter, FiActivity, FiAlertCircle } from 'react-icons/fi';
 
 const DocenteEstudiantes = () => {
+  const location = useLocation();
   const [estudiantes, setEstudiantes] = useState([]);
   const [estudiantesFiltrados, setEstudiantesFiltrados] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -112,6 +113,24 @@ const DocenteEstudiantes = () => {
             </div>
           )}
         </div>
+
+        {estudiantes.length === 0 && (
+          <div className="bg-red-50 border-l-4 border-[#ec3724] p-5 rounded-r-xl shadow-sm animate-fadeIn">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <FiAlertCircle className="h-6 w-6 text-[#ec3724]" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Sin Estudiantes o Paralelos Asignados
+                </h3>
+                <div className="mt-1 text-xs font-semibold text-slate-650">
+                  No tienes cursos, paralelos o estudiantes asignados actualmente. Si consideras que esto es un error, por favor contacta al administrador.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Panel de Filtros */}
         <div className="bg-white rounded-xl p-5 border border-slate-250 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -270,6 +289,7 @@ const DocenteEstudiantes = () => {
                         <td className="px-4 py-3.5 whitespace-nowrap text-right">
                           <Link
                             to={`/docente/estudiantes/${est.id}`}
+                            state={{ from: location.pathname }}
                             className="inline-flex items-center gap-0.5 px-3 py-1.5 bg-[#ec3724] hover:bg-[#d12a1a] text-white font-bold rounded text-xs transition-colors shadow-sm"
                           >
                             <span>Gestionar</span>

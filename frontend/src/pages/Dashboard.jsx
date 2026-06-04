@@ -75,7 +75,19 @@ const Dashboard = () => {
               {esAdmin() ? 'Panel de Control - Administración' : 'Mi Portal Académico'}
             </h1>
             <p className="text-xs font-semibold text-slate-500 mt-1">
-              Bienvenido, <strong className="text-slate-800">{usuario?.email}</strong>. Gestiona los procesos institucionales vigentes.
+              Bienvenido, <strong className="text-slate-800">
+                {(() => {
+                  if (esAdmin()) {
+                    return usuario?.nombres || (() => {
+                      if (!usuario?.email) return 'Administrador';
+                      const parteLocal = usuario.email.split('@')[0];
+                      const partes = parteLocal.split('.');
+                      return partes.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+                    })();
+                  }
+                  return dashboardEstudiante?.estudiante?.nombres || usuario?.email;
+                })()}
+              </strong>. Gestiona los procesos institucionales vigentes.
             </p>
           </div>
         </div>
@@ -862,7 +874,7 @@ const DashboardEstudiante = ({ data, onReload }) => {
         </div>
 
         {/* Columna Derecha: Acceso Rápido */}
-        <div className="space-y-8">
+        <div className="space-y-8 lg:sticky lg:top-6">
           <div className="bg-white rounded-xl p-6 md:p-8 shadow-sm border border-slate-200 flex flex-col justify-between min-h-[460px]">
             <div className="space-y-4">
               <h3 className="text-xs font-black text-slate-850 uppercase tracking-wider">

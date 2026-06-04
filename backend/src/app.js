@@ -49,6 +49,14 @@ app.use((err, req, res, next) => {
     });
   }
 
+  // Error de tipo de archivo no permitido
+  if (err.code === 'INVALID_FILE_TYPE') {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
   res.status(500).json({
     success: false,
     message: 'Error interno del servidor',

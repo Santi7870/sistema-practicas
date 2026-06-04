@@ -22,6 +22,11 @@ const Notificaciones = () => {
   const [filtro, setFiltro] = useState('todas'); // todas, leidas, no_leidas
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
+  
+  // Estados de paginación y modales
+  const [paginaActual, setPaginaActual] = useState(1);
+  const notificacionesPorPagina = 20;
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const obtenerEnlace = (notificacion) => {
     if (notificacion.enlace) {
@@ -41,6 +46,11 @@ const Notificaciones = () => {
   useEffect(() => {
     cargarNotificaciones();
   }, []);
+
+  // Resetear página a 1 cuando cambia el filtro
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [filtro]);
 
   const cargarNotificaciones = async () => {
     try {
@@ -85,9 +95,7 @@ const Notificaciones = () => {
     }
   };
 
-  const eliminarNotificacion = async (id) => {
-    if (!window.confirm('¿Eliminar esta notificación?')) return;
-
+  const ejecutarEliminarNotificacion = async (id) => {
     try {
       await api.delete(`/notificaciones/${id}`);
       setNotificaciones((prev) => prev.filter((not) => not.id !== id));
@@ -137,6 +145,12 @@ const Notificaciones = () => {
   });
 
   const noLeidas = notificaciones.filter((not) => !not.leida).length;
+
+  const totalPaginas = Math.ceil(notificacionesFiltradas.length / notificacionesPorPagina);
+  const notificacionesPaginadas = notificacionesFiltradas.slice(
+    (paginaActual - 1) * notificacionesPorPagina,
+    paginaActual * notificacionesPorPagina
+  );
 
   if (cargando) {
     return (
@@ -243,7 +257,7 @@ const Notificaciones = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {notificacionesFiltradas.map((notificacion) => {
+            {notificacionesPaginadas.map((notificacion) => {
               const Icono = getIconoTipo(notificacion.tipo);
               const colorTipo = getColorTipo(notificacion.tipo);
 
@@ -321,7 +335,7 @@ const Notificaciones = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          eliminarNotificacion(notificacion.id);
+                          setConfirmDeleteId(notificacion.id);
                         }}
                         className="p-1.5 text-slate-400 hover:text-[#ec3724] hover:bg-slate-50 rounded transition-colors"
                         title="Eliminar"
@@ -333,6 +347,67 @@ const Notificaciones = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Paginación */}
+        {totalPaginas > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-8 pt-4 border-t border-slate-200">
+            <button
+              onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+              disabled={paginaActual === 1}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+            >
+              Anterior
+            </button>
+            <span className="text-xs font-black text-slate-500 uppercase tracking-wider px-2">
+              Página {paginaActual} de {totalPaginas}
+            </span>
+            <button
+              onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
+              disabled={paginaActual === totalPaginas}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
+
+        {/* Modal de Confirmar Eliminación */}
+        {confirmDeleteId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full overflow-hidden animate-scaleUp">
+              <div className="p-6 space-y-4">
+                <div className="flex items-center gap-3 text-red-650">
+                  <div className="p-2 bg-red-50 rounded-lg">
+                    <FiTrash2 className="h-6 w-6 text-[#ec3724]" />
+                  </div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                    Eliminar Notificación
+                  </h3>
+                </div>
+                <p className="text-xs font-semibold text-slate-500 leading-relaxed">
+                  ¿Estás seguro de que deseas eliminar esta notificación de tu historial?
+                </p>
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-700 font-bold text-[10px] uppercase tracking-wider transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => {
+                      ejecutarEliminarNotificacion(confirmDeleteId);
+                      setConfirmDeleteId(null);
+                    }}
+                    className="px-4 py-2 bg-[#ec3724] hover:bg-[#c22d1e] text-white rounded-lg font-bold text-[10px] uppercase tracking-wider shadow-sm transition-all"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

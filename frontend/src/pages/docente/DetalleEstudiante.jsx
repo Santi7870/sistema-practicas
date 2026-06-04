@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import api from '../../services/api';
 import {
@@ -22,6 +22,8 @@ import {
 
 const DocenteDetalleEstudiante = () => {
   const { id } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [estudiante, setEstudiante] = useState(null);
   const [inscripcion, setInscripcion] = useState(null);
   const [calificaciones, setCalificaciones] = useState(null);
@@ -60,7 +62,7 @@ const DocenteDetalleEstudiante = () => {
       setCalificaciones(responseCalificaciones.data.data);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Error al cargar los detalles del estudiante.');
+      setError(err.response?.data?.message || err.message || 'Error al cargar los detalles del estudiante.');
     } finally {
       setCargando(false);
     }
@@ -218,13 +220,19 @@ const DocenteDetalleEstudiante = () => {
       <div className="flex-1 max-w-7xl w-full mx-auto px-4 py-6 space-y-6">
         {/* Enlace atrás */}
         <div>
-          <Link
-            to="/docente/estudiantes"
-            className="inline-flex items-center space-x-2 text-slate-600 hover:text-[#ec3724] font-bold text-xs transition"
+          <button
+            onClick={() => {
+              if (location.state?.from) {
+                navigate(location.state.from);
+              } else {
+                navigate('/docente/estudiantes');
+              }
+            }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
           >
-            <FiArrowLeft className="h-4 w-4" />
-            <span>Volver a la lista de estudiantes</span>
-          </Link>
+            <FiArrowLeft className="h-4 w-4 text-slate-500" />
+            <span>Volver</span>
+          </button>
         </div>
 
         {mensajeOperacion.texto && (
@@ -278,9 +286,10 @@ const DocenteDetalleEstudiante = () => {
               </span>
               <Link
                 to={`/docente/estudiantes/${estudiante.id}/calificaciones`}
-                className="inline-flex items-center space-x-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2 rounded shadow-sm transition duration-200"
+                state={{ from: location.pathname }}
+                className="inline-flex items-center space-x-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2.5 rounded-lg shadow-sm transition duration-200"
               >
-                <FiFileText className="h-3.5 w-3.5" />
+                <FiBookOpen className="h-3.5 w-3.5" />
                 <span>Libro de Calificaciones</span>
               </Link>
             </div>
@@ -624,6 +633,7 @@ const DocenteDetalleEstudiante = () => {
               <div className="mt-6 pt-6 border-t border-slate-200">
                 <Link
                   to={`/docente/estudiantes/${estudiante.id}/calificaciones`}
+                  state={{ from: location.pathname }}
                   className="w-full inline-flex items-center justify-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2.5 rounded transition shadow-sm border border-slate-200"
                 >
                   <FiBookOpen className="h-4 w-4" />
@@ -638,14 +648,14 @@ const DocenteDetalleEstudiante = () => {
         {/* Modal de Calificación y Retroalimentación */}
         {modalAbierto && activeEntrega && (
           <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-            <div className="bg-white rounded-xl max-w-lg w-full shadow-xl overflow-hidden border border-slate-200">
+            <div className="bg-white rounded-xl max-w-lg w-full shadow-xl overflow-hidden border border-slate-200 animate-scale-up">
               <div className="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                 <div>
                   <span className="tracking-widest text-[9px] font-bold text-[#ec3724] bg-red-50 px-2 py-0.5 rounded uppercase border border-red-100">
                     {activeEntrega.codigo}
                   </span>
                   <h3 className="text-sm font-bold text-slate-900 mt-1">
-                    Calificar Tarea Académica
+                    Calificación Rápida de Entrega
                   </h3>
                 </div>
                 <button
@@ -658,6 +668,17 @@ const DocenteDetalleEstudiante = () => {
 
               <form onSubmit={guardarCalificacion}>
                 <div className="p-5 space-y-4">
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2 animate-fadeIn">
+                    <span>¿Deseas visualizar el documento en pantalla dividida mientras calificas?</span>
+                    <Link
+                      to={`/docente/tareas/${activeEntrega.tareaId}`}
+                      state={{ from: location.pathname }}
+                      className="text-[#ec3724] font-black uppercase text-[10px] tracking-wider hover:underline"
+                    >
+                      Ir a Calificación Completa
+                    </Link>
+                  </div>
+
                   {error && (
                     <div className="bg-rose-50 text-rose-700 border border-rose-200 rounded-lg p-3 flex items-center space-x-2 text-xs font-semibold animate-in fade-in duration-200">
                       <FiAlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -687,7 +708,7 @@ const DocenteDetalleEstudiante = () => {
                       <div className="relative">
                         <input
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0"
                           max={activeEntrega.puntajeMaximo}
                           value={formNota}
@@ -704,11 +725,15 @@ const DocenteDetalleEstudiante = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                      Retroalimentación / Comentarios
-                    </label>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                        Retroalimentación / Comentarios
+                      </label>
+                      <span className="text-[9px] font-bold text-slate-400">{(formComentario || '').length} / 1000</span>
+                    </div>
                     <textarea
                       rows="4"
+                      maxLength={1000}
                       value={formComentario}
                       onChange={(e) => setFormComentario(e.target.value)}
                       placeholder="Escribe observaciones o comentarios de mejora para el estudiante..."

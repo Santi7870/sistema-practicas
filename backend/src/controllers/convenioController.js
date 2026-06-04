@@ -158,6 +158,20 @@ const crearConvenio = async (req, res) => {
       });
     }
 
+    if (contacto && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(contacto)) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre del contacto/representante sólo puede contener letras y espacios.',
+      });
+    }
+
+    if (telefono && !/^[0-9]+$/.test(telefono)) {
+      return res.status(400).json({
+        success: false,
+        message: 'El número de teléfono sólo puede contener números.',
+      });
+    }
+
     // Verificar si ya existe un convenio con el mismo nombre
     const convenioExistente = await Convenio.findOne({
       where: { nombreEmpresa },
@@ -225,6 +239,20 @@ const actualizarConvenio = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Convenio no encontrado.',
+      });
+    }
+
+    if (contacto && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(contacto)) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre del contacto/representante sólo puede contener letras y espacios.',
+      });
+    }
+
+    if (telefono && !/^[0-9]+$/.test(telefono)) {
+      return res.status(400).json({
+        success: false,
+        message: 'El número de teléfono sólo puede contener números.',
       });
     }
 
@@ -351,6 +379,22 @@ const crearConveniosMasivo = async (req, res) => {
           errores.push({
             convenio: data,
             error: 'El nombre de la empresa y el área son obligatorios.',
+          });
+          continue;
+        }
+
+        if (contacto && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(contacto)) {
+          errores.push({
+            convenio: data,
+            error: 'El nombre del contacto/representante sólo puede contener letras y espacios.',
+          });
+          continue;
+        }
+
+        if (telefono && !/^[0-9]+$/.test(telefono)) {
+          errores.push({
+            convenio: data,
+            error: 'El número de teléfono sólo puede contener números.',
           });
           continue;
         }

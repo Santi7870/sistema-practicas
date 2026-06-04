@@ -33,6 +33,7 @@ const bootstrapAdmin = async () => {
       rol: 'admin',
       estadoCuenta: 'activo',
       debeCambiarPassword: false,
+      nombres: 'Administrador',
     },
   });
 
@@ -41,6 +42,9 @@ const bootstrapAdmin = async () => {
     admin.rol = 'admin';
     admin.estadoCuenta = 'activo';
     admin.debeCambiarPassword = false;
+    if (!admin.nombres) {
+      admin.nombres = 'Administrador';
+    }
     await admin.save();
     console.log(`Admin actualizado: ${email}`);
   } else {

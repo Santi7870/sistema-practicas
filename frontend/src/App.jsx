@@ -31,6 +31,7 @@ import DocenteDetalleEstudiante from './pages/docente/DetalleEstudiante';
 import GestionCiclos from './pages/docente/GestionCiclos';
 import DetalleTarea from './pages/docente/DetalleTarea';
 import LibroCalificaciones from './pages/docente/LibroCalificaciones';
+import EntregasPendientes from './pages/docente/EntregasPendientes';
 import MisCalificaciones from './pages/estudiante/MisCalificaciones';
 
 function App() {
@@ -184,6 +185,7 @@ function App() {
           <Route path="/docente/ciclos" element={<PrivateRoute docenteOnly><GestionCiclos /></PrivateRoute>} />
           <Route path="/docente/tareas/:tareaId" element={<PrivateRoute docenteOnly><DetalleTarea /></PrivateRoute>} />
           <Route path="/docente/estudiantes/:id/calificaciones" element={<PrivateRoute docenteOnly><LibroCalificaciones /></PrivateRoute>} />
+          <Route path="/docente/entregas-pendientes" element={<PrivateRoute docenteOnly><EntregasPendientes /></PrivateRoute>} />
 
           {/* Ruta por defecto */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

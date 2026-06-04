@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   FiAlertCircle,
   FiArrowRight,
@@ -13,7 +13,8 @@ import Navbar from '../../components/Navbar';
 import api from '../../services/api';
 
 const DocenteDashboard = () => {
-  const { usuario } = useAuth();
+  const { usuario, docente } = useAuth();
+  const location = useLocation();
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [estudiantes, setEstudiantes] = useState([]);
@@ -103,25 +104,53 @@ const DocenteDashboard = () => {
               )}
             </div>
             <p className="text-xs font-semibold text-slate-500 mt-1.5">
-              Bienvenido, <strong className="text-slate-800">{usuario?.email}</strong>. Gestiona tareas por ciclos y calificaciones.
+              Bienvenido, <strong className="text-slate-800">{docente?.nombres || usuario?.email}</strong>. Gestiona tareas por ciclos y calificaciones.
             </p>
             {error && <p className="text-xs font-black text-rose-600 mt-2 uppercase tracking-wide">{error}</p>}
           </div>
           <div className="flex flex-wrap gap-2 pl-2 lg:pl-0">
             <Link
-              to="/docente/ciclos"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#ec3724] text-white hover:bg-[#d32010] rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all active:scale-[0.98]"
+              to={paraleloDocente ? "/docente/ciclos" : "#"}
+              onClick={(e) => !paraleloDocente && e.preventDefault()}
+              className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all ${
+                paraleloDocente
+                  ? 'bg-[#ec3724] text-white hover:bg-[#d32010] active:scale-[0.98]'
+                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+              }`}
             >
               <FiClipboard /> Gestión de Ciclos y Tareas
             </Link>
             <Link
-              to="/docente/estudiantes"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all active:scale-[0.98]"
+              to={paraleloDocente ? "/docente/estudiantes" : "#"}
+              onClick={(e) => !paraleloDocente && e.preventDefault()}
+              className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all ${
+                paraleloDocente
+                  ? 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 active:scale-[0.98]'
+                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+              }`}
             >
               <FiUsers /> Ver Estudiantes
             </Link>
           </div>
         </div>
+
+        {estudiantes.length === 0 && (
+          <div className="bg-red-50 border-l-4 border-[#ec3724] p-5 rounded-r-xl shadow-sm animate-fadeIn">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <FiAlertCircle className="h-6 w-6 text-[#ec3724]" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Sin Estudiantes o Paralelos Asignados
+                </h3>
+                <div className="mt-1 text-xs font-semibold text-slate-650">
+                  No tienes cursos, paralelos o estudiantes asignados actualmente. Si consideras que esto es un error, por favor contacta al administrador.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -205,6 +234,7 @@ const DocenteDashboard = () => {
                       <td className="px-5 py-3.5 text-center">
                         <Link
                           to={`/docente/tareas/${e.tarea?.id}`}
+                          state={{ from: location.pathname }}
                           className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-50 hover:bg-sky-100 text-sky-850 hover:text-sky-900 border border-sky-200/50 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm transition-all"
                         >
                           <FiBookOpen className="h-3 w-3" /> Calificar

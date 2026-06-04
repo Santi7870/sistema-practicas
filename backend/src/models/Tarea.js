@@ -65,6 +65,21 @@ const Tarea = sequelize.define(
       allowNull: false,
       defaultValue: true,
     },
+    templatePath: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'template_path',
+    },
+    templateName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'template_name',
+    },
+    templateMime: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'template_mime',
+    },
   },
   {
     tableName: 'tareas',

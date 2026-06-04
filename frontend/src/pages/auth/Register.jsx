@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FiMail, FiLock, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiMail, FiLock, FiAlertCircle, FiCheckCircle, FiEye, FiEyeOff } from 'react-icons/fi';
 
 const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [mostrarConfirmPassword, setMostrarConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [exito, setExito] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -20,8 +22,10 @@ const Register = () => {
     setExito(false);
     setCargando(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     // Validaciones básicas
-    if (!email.endsWith('@espoch.edu.ec')) {
+    if (!cleanEmail.endsWith('@espoch.edu.ec')) {
       setError('Debes usar tu correo institucional (@espoch.edu.ec)');
       setCargando(false);
       return;
@@ -39,14 +43,10 @@ const Register = () => {
       return;
     }
 
-    const resultado = await register(email, password, confirmPassword);
+    const resultado = await register(cleanEmail, password, confirmPassword);
 
     if (resultado.success) {
       setExito(true);
-      // Redirigir al login después de 3 segundos
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
     } else {
       setError(resultado.message);
     }
@@ -68,9 +68,13 @@ const Register = () => {
             Tu cuenta ha sido creada y está pendiente de aprobación por el
             administrador del sistema. Recibirás una notificación por correo una vez aprobada.
           </p>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest animate-pulse">
-            Redirigiendo al login en 3 segundos...
-          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="w-full btn btn-primary py-3 text-xs uppercase tracking-widest font-black mt-2"
+          >
+            Entendido, ir al Login
+          </button>
         </div>
       </div>
     );
@@ -143,13 +147,24 @@ const Register = () => {
                   <FiLock className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
-                  type="password"
+                  type={mostrarPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input pl-9"
+                  className="input pl-9 pr-10"
                   placeholder="Mínimo 6 caracteres"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setMostrarPassword(!mostrarPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                >
+                  {mostrarPassword ? (
+                    <FiEyeOff className="h-4 w-4" />
+                  ) : (
+                    <FiEye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
 
@@ -163,13 +178,24 @@ const Register = () => {
                   <FiLock className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
-                  type="password"
+                  type={mostrarConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="input pl-9"
+                  className="input pl-9 pr-10"
                   placeholder="Repite tu contraseña"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setMostrarConfirmPassword(!mostrarConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                >
+                  {mostrarConfirmPassword ? (
+                    <FiEyeOff className="h-4 w-4" />
+                  ) : (
+                    <FiEye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
 

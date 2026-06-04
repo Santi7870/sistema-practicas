@@ -75,7 +75,7 @@ const GestionParalelos = () => {
       const responseDocentes = await api.get('/admin/docentes');
       const tipoTutorRequerido = modalidad === 'laboral' ? 'laborales' : 'comunales';
       const docentesFiltrados = responseDocentes.data.data.filter(
-        (doc) => doc.tipoTutor === tipoTutorRequerido
+        (doc) => doc.tipoTutor === tipoTutorRequerido || doc.tipoTutor === 'ambas'
       );
       setDocentes(docentesFiltrados);
 

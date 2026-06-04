@@ -5,3 +5,5 @@ dist/
 build/
 scratch_*.txt
 ~$*.xlsx
+docs/diagrama-bd-tesis.drawio
+docs/diagrama-bd-tesis.png

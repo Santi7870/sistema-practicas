@@ -35,12 +35,11 @@ const fileFilter = (req, file, cb) => {
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(
-      new Error(
-        'Formato de archivo no permitido. Solo se aceptan archivos PDF, DOC, DOCX, XLS y XLSX.'
-      ),
-      false
+    const error = new Error(
+      'Formato de archivo no permitido. Solo se aceptan archivos PDF, DOC, DOCX, XLS y XLSX.'
     );
+    error.code = 'INVALID_FILE_TYPE';
+    cb(error, false);
   }
 };
 

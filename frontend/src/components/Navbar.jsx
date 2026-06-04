@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   FiHome, 
@@ -12,10 +12,17 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 
 const Navbar = () => {
-  const { usuario, logout } = useAuth();
+  const { usuario, logout, docente, estudiante } = useAuth();
   const navigate = useNavigate();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [noLeidas, setNoLeidas] = useState(0);
+
+  const navLinkClass = ({ isActive }) =>
+    `px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap self-center ${
+      isActive
+        ? 'text-[#ec3724] bg-red-50/60 font-black shadow-sm border border-red-100/50'
+        : 'text-slate-600 hover:text-[#ec3724] hover:bg-slate-50'
+    }`;
 
   useEffect(() => {
     if (usuario) {
@@ -58,19 +65,54 @@ const Navbar = () => {
               <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
                 <Link
                   to="/dashboard"
-                  className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-slate-50 rounded-lg transition-all"
+                  className="p-1.5 text-slate-400 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all"
                   title="Ir al Dashboard"
                 >
                   <FiHome className="h-5 w-5" />
                 </Link>
                 <div>
-                  <h1 className="text-base font-black text-slate-900 leading-none">
+                  <h1 className="text-sm font-extrabold text-slate-900 leading-none">
                     Sistema de Prácticas
                   </h1>
                   <span className="text-[10px] font-bold text-slate-400 block mt-0.5">ESPOCH - Software</span>
                 </div>
               </div>
             </div>
+            {usuario?.rol === 'docente' && (
+              <div className="hidden md:flex items-center space-x-1 border-l border-slate-200 pl-4 ml-4 h-8 self-center">
+                <NavLink
+                  to="/docente/dashboard"
+                  className={navLinkClass}
+                >
+                  Inicio
+                </NavLink>
+                <NavLink
+                  to="/docente/ciclos"
+                  className={navLinkClass}
+                >
+                  Gestión de Ciclos/Tareas
+                </NavLink>
+                <NavLink
+                  to="/docente/estudiantes"
+                  className={navLinkClass}
+                  end
+                >
+                  Estudiantes
+                </NavLink>
+                <NavLink
+                  to="/docente/entregas-pendientes"
+                  className={navLinkClass}
+                >
+                  Entregas por Calificar
+                </NavLink>
+                <NavLink
+                  to="/docente/estudiantes"
+                  className={navLinkClass}
+                >
+                  Libro de Calificaciones
+                </NavLink>
+              </div>
+            )}
           </div>
 
           {/* Menú desktop */}
@@ -93,7 +135,7 @@ const Navbar = () => {
             <div className="flex items-center space-x-3 border-l pl-4">
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">
-                  {usuario?.email}
+                  {usuario?.rol === 'docente' ? (docente?.nombres || usuario?.email) : (usuario?.rol === 'estudiante' ? (estudiante?.nombres || usuario?.email) : usuario?.email)}
                 </p>
                 <p className="text-xs text-gray-500 capitalize">
                   {usuario?.rol}
@@ -136,12 +178,52 @@ const Navbar = () => {
             <div className="space-y-3">
               <div className="px-4 py-2 bg-gray-50 rounded-lg">
                 <p className="text-sm font-medium text-gray-900">
-                  {usuario?.email}
+                  {usuario?.rol === 'docente' ? (docente?.nombres || usuario?.email) : (usuario?.rol === 'estudiante' ? (estudiante?.nombres || usuario?.email) : usuario?.email)}
                 </p>
                 <p className="text-xs text-gray-500 capitalize">
                   {usuario?.rol}
                 </p>
               </div>
+
+              {usuario?.rol === 'docente' && (
+                <div className="space-y-1 border-b border-slate-100 pb-3">
+                  <Link
+                    to="/docente/dashboard"
+                    className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all"
+                    onClick={() => setMenuAbierto(false)}
+                  >
+                    Inicio
+                  </Link>
+                  <Link
+                    to="/docente/ciclos"
+                    className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all"
+                    onClick={() => setMenuAbierto(false)}
+                  >
+                    Gestión de Ciclos/Tareas
+                  </Link>
+                  <Link
+                    to="/docente/estudiantes"
+                    className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all"
+                    onClick={() => setMenuAbierto(false)}
+                  >
+                    Estudiantes
+                  </Link>
+                  <Link
+                    to="/docente/entregas-pendientes"
+                    onClick={() => setMenuAbierto(false)}
+                    className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all"
+                  >
+                    Entregas por Calificar
+                  </Link>
+                  <Link
+                    to="/docente/estudiantes"
+                    className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all"
+                    onClick={() => setMenuAbierto(false)}
+                  >
+                    Libro de Calificaciones
+                  </Link>
+                </div>
+              )}
 
               <Link
                 to="/notificaciones"

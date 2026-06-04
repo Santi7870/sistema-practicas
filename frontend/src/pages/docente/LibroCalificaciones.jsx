@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { FiChevronDown, FiChevronUp, FiArrowLeft } from 'react-icons/fi';
 import Navbar from '../../components/Navbar';
 import api from '../../services/api';
@@ -20,6 +20,8 @@ const bgNota = (nota) => {
 
 const LibroCalificaciones = () => {
   const { id } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [openCycle, setOpenCycle] = useState({ 1: true, 2: true, 3: true });
@@ -43,13 +45,19 @@ const LibroCalificaciones = () => {
       <div className="flex-1 max-w-7xl w-full mx-auto px-4 py-6 space-y-6">
         {/* Enlace atrás */}
         <div>
-          <Link
-            to={`/docente/estudiantes/${id}`}
-            className="inline-flex items-center space-x-2 text-slate-600 hover:text-[#ec3724] font-bold text-xs transition"
+          <button
+            onClick={() => {
+              if (location.state?.from) {
+                navigate(location.state.from);
+              } else {
+                navigate(`/docente/estudiantes/${id}`);
+              }
+            }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
           >
-            <FiArrowLeft className="h-4 w-4" />
-            <span>Volver al detalle del estudiante</span>
-          </Link>
+            <FiArrowLeft className="h-4 w-4 text-slate-500" />
+            <span>Volver</span>
+          </button>
         </div>
 
         <div className="bg-white rounded-xl border-l-4 border-l-[#ec3724] border-t border-r border-b border-slate-200 shadow-sm p-6">

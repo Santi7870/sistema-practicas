@@ -10,6 +10,7 @@ const initialForm = {
   puntajeMaximo: 10,
   fechaApertura: '',
   fechaCierre: '',
+  plantilla: null,
 };
 
 const estadoConfig = {
@@ -37,6 +38,9 @@ const GestionCiclos = () => {
   const [form, setForm] = useState(initialForm);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [editingTareaId, setEditingTareaId] = useState(null);
+  const [templateName, setTemplateName] = useState('');
+  const [eliminarPlantilla, setEliminarPlantilla] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   const cargar = async () => {
     try {
@@ -92,12 +96,70 @@ const GestionCiclos = () => {
     if (!fechaStr) return '';
     const d = new Date(fechaStr);
     if (isNaN(d.getTime())) return '';
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    try {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Guayaquil',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      const parts = formatter.formatToParts(d);
+      const partObj = {};
+      parts.forEach(p => { partObj[p.type] = p.value; });
+      return `${partObj.year}-${partObj.month}-${partObj.day}T${partObj.hour}:${partObj.minute}`;
+    } catch (e) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const maxSize = 20 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('El archivo no debe exceder los 20MB.');
+      e.target.value = '';
+      return;
+    }
+
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+    const fileName = file.name.toLowerCase();
+    const matches = allowedExtensions.some(ext => fileName.endsWith(ext));
+    if (!matches) {
+      setError('Extensión de archivo no permitida. Solo se permiten: .pdf, .doc, .docx, .xls, .xlsx');
+      e.target.value = '';
+      return;
+    }
+
+    setError('');
+    setForm({ ...form, plantilla: file });
+    setEliminarPlantilla(false);
+  };
+
+  const descargarPlantilla = async (tareaId, nombreArchivo) => {
+    try {
+      const response = await api.get(`/docente/tareas/${tareaId}/descargar-plantilla`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', nombreArchivo || 'plantilla.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      setError('No se pudo descargar la plantilla.');
+    }
   };
 
   const guardarTarea = async (e) => {
@@ -114,27 +176,43 @@ const GestionCiclos = () => {
         return;
       }
 
-      const payload = {
-        titulo: form.titulo,
-        descripcion: form.descripcion,
-        puntajeMaximo: Number(form.puntajeMaximo),
-        fechaApertura: form.fechaApertura,
-        fechaCierre: form.fechaCierre,
-      };
+      const offsetSuffix = '-05:00';
+      const fechaAperturaVal = form.fechaApertura.includes('-05:00') || form.fechaApertura.includes('Z')
+        ? form.fechaApertura 
+        : `${form.fechaApertura}:00${offsetSuffix}`;
+      const fechaCierreVal = form.fechaCierre.includes('-05:00') || form.fechaCierre.includes('Z')
+        ? form.fechaCierre 
+        : `${form.fechaCierre}:00${offsetSuffix}`;
+
+      const formData = new FormData();
+      formData.append('titulo', form.titulo);
+      formData.append('descripcion', form.descripcion);
+      formData.append('puntajeMaximo', Number(form.puntajeMaximo));
+      formData.append('fechaApertura', fechaAperturaVal);
+      formData.append('fechaCierre', fechaCierreVal);
+
+      if (form.plantilla) {
+        formData.append('plantilla', form.plantilla);
+      }
 
       if (modoEdicion) {
-        await api.put(`/docente/tareas/${editingTareaId}`, payload);
+        formData.append('eliminarPlantilla', eliminarPlantilla ? 'true' : 'false');
+        await api.put(`/docente/tareas/${editingTareaId}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
       } else {
-        await api.post('/docente/tareas', {
-          ...payload,
-          tipoPractica: tipo,
-          numeroCiclo: cicloActivo,
+        formData.append('tipoPractica', tipo);
+        formData.append('numeroCiclo', cicloActivo);
+        await api.post('/docente/tareas', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
         });
       }
 
       setForm(initialForm);
       setModoEdicion(false);
       setEditingTareaId(null);
+      setTemplateName('');
+      setEliminarPlantilla(false);
       setShowModal(false);
       await cargar();
     } catch (err) {
@@ -151,33 +229,26 @@ const GestionCiclos = () => {
       puntajeMaximo: tarea.puntajeMaximo || 10,
       fechaApertura: formatFechaInput(tarea.fechaApertura),
       fechaCierre: formatFechaInput(tarea.fechaCierre),
+      plantilla: null,
     });
+    setTemplateName(tarea.templateName || '');
+    setEliminarPlantilla(false);
     setEditingTareaId(tarea.id);
     setModoEdicion(true);
     setShowModal(true);
   };
 
   const abrirNuevaTarea = () => {
-    setForm(initialForm);
+    setForm({ ...initialForm, plantilla: null });
+    setTemplateName('');
+    setEliminarPlantilla(false);
     setEditingTareaId(null);
     setModoEdicion(false);
     setShowModal(true);
   };
 
-  const eliminarTarea = async (id) => {
-    if (!window.confirm('¿Está seguro de que desea eliminar esta tarea? Esta acción no se puede deshacer.')) {
-      return;
-    }
-    try {
-      setCargando(true);
-      setError('');
-      await api.delete(`/docente/tareas/${id}`);
-      await cargar();
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'No se pudo eliminar la tarea.');
-    } finally {
-      setCargando(false);
-    }
+  const eliminarTarea = (id) => {
+    setDeleteTargetId(id);
   };
 
   return (
@@ -342,14 +413,14 @@ const GestionCiclos = () => {
                           </Link>
                           <button
                             onClick={() => abrirEditarTarea(t)}
-                            className="p-1 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded border border-transparent hover:border-slate-250"
+                            className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-800 rounded-lg border border-slate-200 shadow-sm transition"
                             title="Editar tarea"
                           >
                             <FiEdit className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => eliminarTarea(t.id)}
-                            className="p-1 hover:bg-rose-50 text-slate-400 hover:text-[#ec3724] rounded border border-transparent hover:border-rose-200"
+                            className="p-1.5 bg-rose-50 hover:bg-rose-100 text-[#ec3724] hover:text-[#d32010] rounded-lg border border-rose-200 shadow-sm transition"
                             title="Eliminar tarea"
                           >
                             <FiTrash2 className="h-3.5 w-3.5" />
@@ -412,7 +483,7 @@ const GestionCiclos = () => {
                       type="number"
                       min="1"
                       max="10"
-                      step="0.1"
+                      step="0.01"
                       value={form.puntajeMaximo}
                       onChange={(e) => setForm({ ...form, puntajeMaximo: e.target.value })}
                       required
@@ -454,6 +525,58 @@ const GestionCiclos = () => {
                       onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
                     />
                   </div>
+                  <div className="md:col-span-2 border-t border-slate-200 pt-4">
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                      Plantilla / Archivo de Apoyo (Opcional, máx 20MB)
+                    </label>
+                    
+                    {templateName && !eliminarPlantilla ? (
+                      <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-250 mb-3 animate-fadeIn">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-semibold text-slate-700 truncate max-w-[250px]" title={templateName}>
+                            📄 {templateName}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => descargarPlantilla(editingTareaId, templateName)}
+                            className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-[9px] font-bold text-slate-700 transition"
+                          >
+                            Descargar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEliminarPlantilla(true)}
+                            className="px-2 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded text-[9px] font-bold text-rose-700 transition"
+                          >
+                            Eliminar plantilla
+                          </button>
+                        </div>
+                      </div>
+                    ) : templateName && eliminarPlantilla ? (
+                      <div className="bg-amber-50 p-2.5 rounded-lg border border-amber-200 text-[11px] font-semibold text-amber-800 mb-3 flex items-center justify-between">
+                        <span>La plantilla actual será eliminada al guardar.</span>
+                        <button
+                          type="button"
+                          onClick={() => setEliminarPlantilla(false)}
+                          className="text-[9px] font-black uppercase text-[#ec3724] underline"
+                        >
+                          Deshacer
+                        </button>
+                      </div>
+                    ) : null}
+
+                    <input
+                      type="file"
+                      onChange={handleFileChange}
+                      className="w-full border border-slate-350 rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-755"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Formatos permitidos: PDF, Word (doc, docx), Excel (xls, xlsx).
+                    </p>
+                  </div>
                 </div>
 
                 {error && (
@@ -484,6 +607,53 @@ const GestionCiclos = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {deleteTargetId && (
+        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-slate-200 animate-scale-up">
+            <div className="p-5 border-b border-slate-200 bg-slate-50 flex items-center relative">
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#ec3724]"></div>
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-2">
+                Confirmar Eliminación
+              </h3>
+            </div>
+            <div className="p-6">
+              <p className="text-xs text-slate-650 font-semibold leading-relaxed animate-fadeIn">
+                ¿Está seguro de que desea eliminar esta tarea académica? Esta acción borrará permanentemente la tarea, sus entregas asociadas y las plantillas. Esta acción no se puede deshacer.
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteTargetId(null)}
+                className="px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = deleteTargetId;
+                  setDeleteTargetId(null);
+                  try {
+                    setCargando(true);
+                    setError('');
+                    await api.delete(`/docente/tareas/${id}`);
+                    await cargar();
+                  } catch (err) {
+                    setError(err?.response?.data?.message || err?.message || 'No se pudo eliminar la tarea.');
+                  } finally {
+                    setCargando(false);
+                  }
+                }}
+                className="px-4 py-2 bg-[#ec3724] text-white hover:bg-[#d32010] rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all"
+              >
+                Eliminar Tarea
+              </button>
+            </div>
           </div>
         </div>
       )}

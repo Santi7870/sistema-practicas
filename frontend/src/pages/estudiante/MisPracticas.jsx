@@ -70,6 +70,54 @@ const MisPracticas = () => {
   const [busqueda, setBusqueda] = useState('');
   const [tareaSeleccionadaId, setTareaSeleccionadaId] = useState(null);
   const [preview, setPreview] = useState({ open: false, url: '', nombre: '' });
+  const [editandoEntregas, setEditandoEntregas] = useState({});
+
+  const getFileIcon = (nombreArchivo) => {
+    if (!nombreArchivo) return <FiFileText className="h-8 w-8 text-slate-400 flex-shrink-0" />;
+    const ext = '.' + nombreArchivo.split('.').pop().toLowerCase();
+    if (ext === '.pdf') {
+      return <FiFileText className="h-8 w-8 text-rose-600 flex-shrink-0" />;
+    } else if (ext === '.xls' || ext === '.xlsx') {
+      return <FiFileText className="h-8 w-8 text-emerald-600 flex-shrink-0" />;
+    } else if (ext === '.doc' || ext === '.docx') {
+      return <FiFileText className="h-8 w-8 text-blue-600 flex-shrink-0" />;
+    }
+    return <FiFileText className="h-8 w-8 text-slate-500 flex-shrink-0" />;
+  };
+
+  const handleArchivoChange = (e, key) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Límite de tamaño: 20MB
+    const limit = 20 * 1024 * 1024;
+    if (file.size > limit) {
+      setMensaje({
+        tipo: 'error',
+        texto: 'El archivo es demasiado grande. El tamaño máximo permitido es 20MB.',
+      });
+      e.target.value = null; // Reset input
+      return;
+    }
+
+    // Extensión permitida
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!allowedExtensions.includes(ext)) {
+      setMensaje({
+        tipo: 'error',
+        texto: 'Formato de archivo no permitido. Solo se aceptan archivos PDF, DOC, DOCX, XLS y XLSX.',
+      });
+      e.target.value = null;
+      return;
+    }
+
+    setArchivoTarea((prev) => ({
+      ...prev,
+      [key]: file,
+    }));
+    setMensaje({ tipo: '', texto: '' }); // Limpiar errores
+  };
 
   useEffect(() => {
     const id = setInterval(() => setAhora(new Date()), 1000);
@@ -536,6 +584,39 @@ const MisPracticas = () => {
                     <div className="p-4 bg-white text-xs font-semibold text-slate-700 leading-relaxed whitespace-pre-line">
                       {tareaSeleccionada.descripcion || 'No se han registrado instrucciones especiales para esta tarea.'}
                     </div>
+                    {tareaSeleccionada.templateName && (
+                      <div className="border-t border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-3 animate-fadeIn">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-bold text-slate-700">
+                            📁 Archivo de apoyo: {tareaSeleccionada.templateName}
+                          </span>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await api.get(`/estudiante/tareas/${tareaSeleccionada.id}/descargar-plantilla`, {
+                                responseType: 'blob',
+                              });
+                              const url = window.URL.createObjectURL(new Blob([response.data]));
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.setAttribute('download', tareaSeleccionada.templateName || 'plantilla.pdf');
+                              document.body.appendChild(link);
+                              link.click();
+                              link.remove();
+                              window.URL.revokeObjectURL(url);
+                            } catch (error) {
+                              console.error('Error al descargar plantilla:', error);
+                              alert('No se pudo descargar el archivo de apoyo. Por favor, reintente más tarde.');
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#ec3724] hover:bg-[#d32010] text-white rounded text-xs font-bold shadow-sm transition"
+                        >
+                          <FiDownload className="h-3.5 w-3.5" />
+                          <span>Descargar archivo de apoyo</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Tabla Oficial de Estado de la Entrega (Estilo Moodle) */}
@@ -608,12 +689,14 @@ const MisPracticas = () => {
                                   <div className="mt-2 space-y-2">
                                     <p className="text-xs font-bold text-slate-800 truncate">{tareaSeleccionada.entrega.nombreArchivoInterno}</p>
                                     <div className="flex gap-1.5">
-                                      <button
-                                        onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoInterno)}
-                                        className="btn btn-secondary py-1 px-2.5 text-[9px]"
-                                      >
-                                        Ver PDF
-                                      </button>
+                                      {tareaSeleccionada.entrega.nombreArchivoInterno.toLowerCase().endsWith('.pdf') && (
+                                        <button
+                                          onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoInterno)}
+                                          className="btn btn-secondary py-1 px-2.5 text-[9px]"
+                                        >
+                                          Ver PDF
+                                        </button>
+                                      )}
                                       <button
                                         onClick={() => descargarEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoInterno)}
                                         className="btn btn-secondary py-1 px-2.5 text-[9px]"
@@ -639,12 +722,14 @@ const MisPracticas = () => {
                                   <div className="mt-2 space-y-2">
                                     <p className="text-xs font-bold text-slate-800 truncate">{tareaSeleccionada.entrega.nombreArchivoExterno}</p>
                                     <div className="flex gap-1.5">
-                                      <button
-                                        onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoExterno)}
-                                        className="btn btn-secondary py-1 px-2.5 text-[9px]"
-                                      >
-                                        Ver PDF
-                                      </button>
+                                      {tareaSeleccionada.entrega.nombreArchivoExterno.toLowerCase().endsWith('.pdf') && (
+                                        <button
+                                          onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoExterno)}
+                                          className="btn btn-secondary py-1 px-2.5 text-[9px]"
+                                        >
+                                          Ver PDF
+                                        </button>
+                                      )}
                                       <button
                                         onClick={() => descargarEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoExterno)}
                                         className="btn btn-secondary py-1 px-2.5 text-[9px]"
@@ -666,12 +751,14 @@ const MisPracticas = () => {
                                 <p className="text-xs font-bold text-slate-800">{tareaSeleccionada.entrega.nombreArchivo || 'Nota registrada directamente por el tutor'}</p>
                                 {tareaSeleccionada.entrega.rutaArchivo && (
                                   <div className="flex gap-1.5">
-                                    <button
-                                      onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivo)}
-                                      className="btn btn-secondary py-1 px-2.5 text-[9px]"
-                                    >
-                                      Ver PDF
-                                    </button>
+                                    {tareaSeleccionada.entrega.nombreArchivo?.toLowerCase().endsWith('.pdf') && (
+                                      <button
+                                        onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivo)}
+                                        className="btn btn-secondary py-1 px-2.5 text-[9px]"
+                                      >
+                                        Ver PDF
+                                      </button>
+                                    )}
                                     <button
                                       onClick={() => descargarEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivo)}
                                       className="btn btn-secondary py-1 px-2.5 text-[9px]"
@@ -709,118 +796,289 @@ const MisPracticas = () => {
                           {/* Buzón Tutor Interno */}
                           <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-3 shadow-sm">
                             <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Subir Evaluación Tutor Interno</span>
-                            <label
-                              htmlFor={`archivo-${tareaSeleccionada.id}-interno`}
-                              className="block w-full border border-dashed border-slate-300 rounded-lg p-4 bg-slate-50/50 hover:bg-slate-50 cursor-pointer text-center"
-                            >
-                              <input
-                                id={`archivo-${tareaSeleccionada.id}-interno`}
-                                type="file"
-                                accept=".pdf,.doc,.docx"
-                                className="hidden"
-                                onChange={(e) =>
-                                  setArchivoTarea((prev) => ({
-                                    ...prev,
-                                    [`${tareaSeleccionada.id}-interno`]: e.target.files?.[0] || null,
-                                  }))
-                                }
-                              />
-                              <div className="flex flex-col items-center gap-1.5 text-slate-500">
-                                <FiUpload className="h-4.5 w-4.5 text-[#ec3724]" />
-                                <span className="text-[10px] font-bold uppercase tracking-wider">Seleccionar Archivo</span>
+                            {tareaSeleccionada.entrega?.nombreArchivoInterno && !editandoEntregas[`${tareaSeleccionada.id}-interno`] ? (
+                              <div className="bg-slate-100 rounded-lg border border-slate-200 p-3 flex flex-col items-center space-y-3 text-center">
+                                <div className="flex items-center space-x-2 text-left w-full">
+                                  {getFileIcon(tareaSeleccionada.entrega.nombreArchivoInterno)}
+                                  <div className="truncate flex-grow">
+                                    <p className="text-[11px] font-black text-slate-800 truncate">{tareaSeleccionada.entrega.nombreArchivoInterno}</p>
+                                    <p className="text-[8px] text-slate-400 font-bold uppercase">Entregado</p>
+                                  </div>
+                                </div>
+                                <div className="flex gap-1.5 w-full justify-center">
+                                  {tareaSeleccionada.entrega.nombreArchivoInterno.toLowerCase().endsWith('.pdf') && (
+                                    <button
+                                      onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoInterno)}
+                                      className="btn btn-secondary py-1 px-2.5 text-[9px] uppercase font-black"
+                                    >
+                                      Ver
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => descargarEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoInterno)}
+                                    className="btn btn-secondary py-1 px-2.5 text-[9px] uppercase font-black"
+                                  >
+                                    Descargar
+                                  </button>
+                                  {tareaSeleccionada.entrega.estado !== 'calificada' && (
+                                    <button
+                                      onClick={() => setEditandoEntregas(prev => ({ ...prev, [`${tareaSeleccionada.id}-interno`]: true }))}
+                                      className="btn btn-primary py-1 px-2.5 text-[9px] uppercase font-black"
+                                    >
+                                      Editar
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                              {archivoTarea[`${tareaSeleccionada.id}-interno`] && (
-                                <p className="text-[10px] font-black text-[#ec3724] mt-2 truncate">
-                                  {archivoTarea[`${tareaSeleccionada.id}-interno`].name}
-                                </p>
-                              )}
-                            </label>
-                            <button
-                              onClick={() => subirEntrega(tareaSeleccionada.id, 'interno')}
-                              disabled={subiendoTareaId === `${tareaSeleccionada.id}-interno`}
-                              className="btn btn-primary w-full py-2 flex items-center justify-center gap-1.5"
-                            >
-                              <FiUpload className="h-3.5 w-3.5" />
-                              {subiendoTareaId === `${tareaSeleccionada.id}-interno` ? 'Enviando...' : 'Enviar Evaluación TI'}
-                            </button>
+                            ) : (
+                              <>
+                                <label
+                                  htmlFor={`archivo-${tareaSeleccionada.id}-interno`}
+                                  className="block w-full border border-dashed border-slate-300 rounded-lg p-4 bg-slate-50/50 hover:bg-slate-50 cursor-pointer text-center"
+                                >
+                                  <input
+                                    id={`archivo-${tareaSeleccionada.id}-interno`}
+                                    type="file"
+                                    accept=".pdf,.doc,.docx"
+                                    className="hidden"
+                                    onChange={(e) => handleArchivoChange(e, `${tareaSeleccionada.id}-interno`)}
+                                  />
+                                  <div className="flex flex-col items-center gap-1.5 text-slate-500">
+                                    <FiUpload className="h-4.5 w-4.5 text-[#ec3724]" />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Seleccionar Archivo</span>
+                                    <span className="text-[8px] text-slate-400 font-bold uppercase">Límite: 20MB (PDF, Word)</span>
+                                  </div>
+                                </label>
+                                {archivoTarea[`${tareaSeleccionada.id}-interno`] && (
+                                  <div className="flex items-center justify-between bg-rose-50/50 p-2 rounded border border-rose-100 mt-1">
+                                    <p className="text-[9px] font-black text-[#ec3724] truncate max-w-[130px]">
+                                      {archivoTarea[`${tareaSeleccionada.id}-interno`].name}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() => setArchivoTarea(prev => ({ ...prev, [`${tareaSeleccionada.id}-interno`]: null }))}
+                                      className="text-[8px] font-black text-slate-500 hover:text-[#ec3724] uppercase tracking-wider"
+                                    >
+                                      Limpiar
+                                    </button>
+                                  </div>
+                                )}
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => subirEntrega(tareaSeleccionada.id, 'interno')}
+                                    disabled={subiendoTareaId === `${tareaSeleccionada.id}-interno` || !archivoTarea[`${tareaSeleccionada.id}-interno`]}
+                                    className="btn btn-primary w-full py-2 flex items-center justify-center gap-1.5 text-[9px] uppercase tracking-wider font-black disabled:opacity-50 animate-pulse-slow"
+                                  >
+                                    <FiUpload className="h-3.5 w-3.5" />
+                                    {subiendoTareaId === `${tareaSeleccionada.id}-interno` ? 'Enviando...' : 'Enviar Evaluación TI'}
+                                  </button>
+                                  {tareaSeleccionada.entrega?.nombreArchivoInterno && (
+                                    <button
+                                      onClick={() => {
+                                        setEditandoEntregas(prev => ({ ...prev, [`${tareaSeleccionada.id}-interno`]: false }));
+                                        setArchivoTarea(prev => ({ ...prev, [`${tareaSeleccionada.id}-interno`]: null }));
+                                      }}
+                                      className="btn btn-secondary py-2 px-3 text-[9px] uppercase font-black tracking-wider"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  )}
+                                </div>
+                              </>
+                            )}
                           </div>
 
                           {/* Buzón Tutor Externo */}
                           <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-3 shadow-sm">
                             <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Subir Evaluación Tutor Externo</span>
-                            <label
-                              htmlFor={`archivo-${tareaSeleccionada.id}-externo`}
-                              className="block w-full border border-dashed border-slate-300 rounded-lg p-4 bg-slate-50/50 hover:bg-slate-50 cursor-pointer text-center"
-                            >
-                              <input
-                                id={`archivo-${tareaSeleccionada.id}-externo`}
-                                type="file"
-                                accept=".pdf,.doc,.docx"
-                                className="hidden"
-                                onChange={(e) =>
-                                  setArchivoTarea((prev) => ({
-                                    ...prev,
-                                    [`${tareaSeleccionada.id}-externo`]: e.target.files?.[0] || null,
-                                  }))
-                                }
-                              />
-                              <div className="flex flex-col items-center gap-1.5 text-slate-500">
-                                <FiUpload className="h-4.5 w-4.5 text-[#ec3724]" />
-                                <span className="text-[10px] font-bold uppercase tracking-wider">Seleccionar Archivo</span>
+                            {tareaSeleccionada.entrega?.nombreArchivoExterno && !editandoEntregas[`${tareaSeleccionada.id}-externo`] ? (
+                              <div className="bg-slate-100 rounded-lg border border-slate-200 p-3 flex flex-col items-center space-y-3 text-center">
+                                <div className="flex items-center space-x-2 text-left w-full">
+                                  {getFileIcon(tareaSeleccionada.entrega.nombreArchivoExterno)}
+                                  <div className="truncate flex-grow">
+                                    <p className="text-[11px] font-black text-slate-800 truncate">{tareaSeleccionada.entrega.nombreArchivoExterno}</p>
+                                    <p className="text-[8px] text-slate-400 font-bold uppercase">Entregado</p>
+                                  </div>
+                                </div>
+                                <div className="flex gap-1.5 w-full justify-center">
+                                  {tareaSeleccionada.entrega.nombreArchivoExterno.toLowerCase().endsWith('.pdf') && (
+                                    <button
+                                      onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoExterno)}
+                                      className="btn btn-secondary py-1 px-2.5 text-[9px] uppercase font-black"
+                                    >
+                                      Ver
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => descargarEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivoExterno)}
+                                    className="btn btn-secondary py-1 px-2.5 text-[9px] uppercase font-black"
+                                  >
+                                    Descargar
+                                  </button>
+                                  {tareaSeleccionada.entrega.estado !== 'calificada' && (
+                                    <button
+                                      onClick={() => setEditandoEntregas(prev => ({ ...prev, [`${tareaSeleccionada.id}-externo`]: true }))}
+                                      className="btn btn-primary py-1 px-2.5 text-[9px] uppercase font-black"
+                                    >
+                                      Editar
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                              {archivoTarea[`${tareaSeleccionada.id}-externo`] && (
-                                <p className="text-[10px] font-black text-[#ec3724] mt-2 truncate">
-                                  {archivoTarea[`${tareaSeleccionada.id}-externo`].name}
-                                </p>
-                              )}
-                            </label>
-                            <button
-                              onClick={() => subirEntrega(tareaSeleccionada.id, 'externo')}
-                              disabled={subiendoTareaId === `${tareaSeleccionada.id}-externo`}
-                              className="btn btn-primary w-full py-2 flex items-center justify-center gap-1.5"
-                            >
-                              <FiUpload className="h-3.5 w-3.5" />
-                              {subiendoTareaId === `${tareaSeleccionada.id}-externo` ? 'Enviando...' : 'Enviar Evaluación TE'}
-                            </button>
+                            ) : (
+                              <>
+                                <label
+                                  htmlFor={`archivo-${tareaSeleccionada.id}-externo`}
+                                  className="block w-full border border-dashed border-slate-300 rounded-lg p-4 bg-slate-50/50 hover:bg-slate-50 cursor-pointer text-center"
+                                >
+                                  <input
+                                    id={`archivo-${tareaSeleccionada.id}-externo`}
+                                    type="file"
+                                    accept=".pdf,.doc,.docx"
+                                    className="hidden"
+                                    onChange={(e) => handleArchivoChange(e, `${tareaSeleccionada.id}-externo`)}
+                                  />
+                                  <div className="flex flex-col items-center gap-1.5 text-slate-500">
+                                    <FiUpload className="h-4.5 w-4.5 text-[#ec3724]" />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Seleccionar Archivo</span>
+                                    <span className="text-[8px] text-slate-400 font-bold uppercase">Límite: 20MB (PDF, Word)</span>
+                                  </div>
+                                </label>
+                                {archivoTarea[`${tareaSeleccionada.id}-externo`] && (
+                                  <div className="flex items-center justify-between bg-rose-50/50 p-2 rounded border border-rose-100 mt-1">
+                                    <p className="text-[9px] font-black text-[#ec3724] truncate max-w-[130px]">
+                                      {archivoTarea[`${tareaSeleccionada.id}-externo`].name}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() => setArchivoTarea(prev => ({ ...prev, [`${tareaSeleccionada.id}-externo`]: null }))}
+                                      className="text-[8px] font-black text-slate-500 hover:text-[#ec3724] uppercase tracking-wider"
+                                    >
+                                      Limpiar
+                                    </button>
+                                  </div>
+                                )}
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => subirEntrega(tareaSeleccionada.id, 'externo')}
+                                    disabled={subiendoTareaId === `${tareaSeleccionada.id}-externo` || !archivoTarea[`${tareaSeleccionada.id}-externo`]}
+                                    className="btn btn-primary w-full py-2 flex items-center justify-center gap-1.5 text-[9px] uppercase tracking-wider font-black disabled:opacity-50 animate-pulse-slow"
+                                  >
+                                    <FiUpload className="h-3.5 w-3.5" />
+                                    {subiendoTareaId === `${tareaSeleccionada.id}-externo` ? 'Enviando...' : 'Enviar Evaluación TE'}
+                                  </button>
+                                  {tareaSeleccionada.entrega?.nombreArchivoExterno && (
+                                    <button
+                                      onClick={() => {
+                                        setEditandoEntregas(prev => ({ ...prev, [`${tareaSeleccionada.id}-externo`]: false }));
+                                        setArchivoTarea(prev => ({ ...prev, [`${tareaSeleccionada.id}-externo`]: null }));
+                                      }}
+                                      className="btn btn-secondary py-2 px-3 text-[9px] uppercase font-black tracking-wider"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  )}
+                                </div>
+                              </>
+                            )}
                           </div>
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          <label
-                            htmlFor={`archivo-${tareaSeleccionada.id}`}
-                            className="block w-full border-2 border-dashed border-slate-300 rounded-xl p-5 bg-white hover:bg-slate-50/50 cursor-pointer text-center"
-                          >
-                            <input
-                              id={`archivo-${tareaSeleccionada.id}`}
-                              type="file"
-                              accept=".pdf,.doc,.docx"
-                              className="hidden"
-                              onChange={(e) =>
-                                setArchivoTarea((prev) => ({
-                                  ...prev,
-                                  [tareaSeleccionada.id]: e.target.files?.[0] || null,
-                                }))
-                              }
-                            />
-                            <div className="flex flex-col items-center gap-1.5 text-slate-655">
-                              <FiUpload className="h-6 w-6 text-[#ec3724] mb-1" />
-                              <span className="text-xs font-black uppercase tracking-wider">Suelta archivos o haz clic para examinar</span>
-                              <span className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Formatos permitidos: PDF, DOC, DOCX</span>
+                          {tareaSeleccionada.entrega?.nombreArchivo && !editandoEntregas[tareaSeleccionada.id] ? (
+                            <div className="bg-slate-100 rounded-xl border border-slate-200 p-5 flex flex-col items-center text-center space-y-4">
+                              <div className="flex items-center space-x-3 text-left w-full max-w-md mx-auto">
+                                {getFileIcon(tareaSeleccionada.entrega.nombreArchivo)}
+                                <div className="truncate flex-grow">
+                                  <p className="text-xs font-black text-slate-800 truncate">{tareaSeleccionada.entrega.nombreArchivo}</p>
+                                  <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">
+                                    Entregado el {new Date(tareaSeleccionada.entrega.fechaEntrega).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex gap-2 w-full justify-center">
+                                {tareaSeleccionada.entrega.nombreArchivo.toLowerCase().endsWith('.pdf') && (
+                                  <button
+                                    onClick={() => verEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivo)}
+                                    className="btn btn-secondary py-2 px-3 text-[10px] uppercase font-black tracking-wider flex items-center gap-1.5"
+                                  >
+                                    <FiEye className="h-3.5 w-3.5" /> Ver PDF
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => descargarEntrega(tareaSeleccionada.entrega.id, tareaSeleccionada.entrega.nombreArchivo)}
+                                  className="btn btn-secondary py-2 px-3 text-[10px] uppercase font-black tracking-wider flex items-center gap-1.5"
+                                >
+                                  <FiDownload className="h-3.5 w-3.5" /> Descargar
+                                </button>
+                                {tareaSeleccionada.entrega.estado !== 'calificada' && (
+                                  <button
+                                    onClick={() => setEditandoEntregas(prev => ({ ...prev, [tareaSeleccionada.id]: true }))}
+                                    className="btn btn-primary py-2 px-3 text-[10px] uppercase font-black tracking-wider flex items-center gap-1.5"
+                                  >
+                                    Editar Entrega
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                            {archivoTarea[tareaSeleccionada.id] && (
-                              <p className="text-xs font-black text-[#ec3724] mt-3">
-                                Seleccionado: {archivoTarea[tareaSeleccionada.id].name}
-                              </p>
-                            )}
-                          </label>
-                          <button
-                            onClick={() => subirEntrega(tareaSeleccionada.id)}
-                            disabled={subiendoTareaId === tareaSeleccionada.id}
-                            className="btn btn-primary px-5 py-2.5 flex items-center gap-2"
-                          >
-                            <FiUpload className="h-4 w-4" />
-                            {subiendoTareaId === tareaSeleccionada.id ? 'Subiendo Entrega...' : 'Guardar Entrega'}
-                          </button>
+                          ) : (
+                            <>
+                              <label
+                                htmlFor={`archivo-${tareaSeleccionada.id}`}
+                                className="block w-full border-2 border-dashed border-slate-300 rounded-xl p-5 bg-white hover:bg-slate-50/50 cursor-pointer text-center"
+                              >
+                                <input
+                                  id={`archivo-${tareaSeleccionada.id}`}
+                                  type="file"
+                                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                                  className="hidden"
+                                  onChange={(e) => handleArchivoChange(e, tareaSeleccionada.id)}
+                                />
+                                <div className="flex flex-col items-center gap-1.5 text-slate-655">
+                                  <FiUpload className="h-6 w-6 text-[#ec3724] mb-1" />
+                                  <span className="text-xs font-black uppercase tracking-wider">Suelta archivos o haz clic para examinar</span>
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Formatos permitidos: PDF, Word (DOC, DOCX), Excel (XLS, XLSX)</span>
+                                  <span className="text-[9px] text-[#ec3724] font-black uppercase tracking-wider">Límite: Máximo 20MB</span>
+                                </div>
+                              </label>
+                              {archivoTarea[tareaSeleccionada.id] && (
+                                <div className="flex items-center justify-between bg-rose-50/50 p-2.5 rounded border border-rose-100 max-w-md mx-auto w-full mt-1">
+                                  <p className="text-xs font-black text-[#ec3724] truncate max-w-[280px]">
+                                    Seleccionado: {archivoTarea[tareaSeleccionada.id].name}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setArchivoTarea(prev => ({ ...prev, [tareaSeleccionada.id]: null }))}
+                                    className="text-[9px] font-black text-slate-500 hover:text-[#ec3724] uppercase tracking-wider"
+                                  >
+                                    Limpiar
+                                  </button>
+                                </div>
+                              )}
+                              <div className="flex gap-2 justify-center">
+                                <button
+                                  onClick={() => subirEntrega(tareaSeleccionada.id)}
+                                  disabled={subiendoTareaId === tareaSeleccionada.id || !archivoTarea[tareaSeleccionada.id]}
+                                  className="btn btn-primary px-5 py-2.5 flex items-center gap-2 text-xs font-black uppercase tracking-wider disabled:opacity-50"
+                                >
+                                  <FiUpload className="h-4 w-4" />
+                                  {subiendoTareaId === tareaSeleccionada.id ? 'Subiendo Entrega...' : 'Guardar Entrega'}
+                                </button>
+                                {tareaSeleccionada.entrega?.nombreArchivo && (
+                                  <button
+                                    onClick={() => {
+                                      setEditandoEntregas(prev => ({ ...prev, [tareaSeleccionada.id]: false }));
+                                      setArchivoTarea(prev => ({ ...prev, [tareaSeleccionada.id]: null }));
+                                    }}
+                                    className="btn btn-secondary px-4 py-2 text-xs font-black uppercase tracking-wider"
+                                  >
+                                    Cancelar
+                                  </button>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       )
                     ) : (

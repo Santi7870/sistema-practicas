@@ -1,4 +1,4 @@
-﻿const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs');
 const { sequelize, Usuario } = require('../src/models');
 require('dotenv').config();
 
@@ -17,6 +17,7 @@ async function crearAdmin() {
         password: hash,
         rol: 'admin',
         estadoCuenta: 'activo',
+        nombres: 'Administrador',
       },
     });
 
@@ -24,6 +25,9 @@ async function crearAdmin() {
       admin.password = hash;
       admin.rol = 'admin';
       admin.estadoCuenta = 'activo';
+      if (!admin.nombres) {
+        admin.nombres = 'Administrador';
+      }
       await admin.save();
       console.log('Usuario administrador existente actualizado.');
     } else {

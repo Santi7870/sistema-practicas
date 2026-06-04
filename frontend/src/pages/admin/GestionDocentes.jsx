@@ -11,6 +11,7 @@ import {
   FiAlertCircle,
   FiCopy,
   FiUser,
+  FiEdit,
 } from 'react-icons/fi';
 
 const GestionDocentes = () => {
@@ -24,9 +25,31 @@ const GestionDocentes = () => {
   const [email, setEmail] = useState('');
   const [nombres, setNombres] = useState('');
   const [departamento, setDepartamento] = useState('');
-  const [tipoTutor, setTipoTutor] = useState('laborales'); // comunales, laborales
+  const [tipoTutor, setTipoTutor] = useState('laborales'); // comunales, laborales, ambas
   const [cargandoRegistro, setCargandoRegistro] = useState(false);
   const [errorRegistro, setErrorRegistro] = useState('');
+
+  // Estados para el Modal de Edición de Docente
+  const [modalEdicionAbierto, setModalEdicionAbierto] = useState(false);
+  const [docenteEditando, setDocenteEditando] = useState(null);
+  const [emailEdit, setEmailEdit] = useState('');
+  const [nombresEdit, setNombresEdit] = useState('');
+  const [departamentoEdit, setDepartamentoEdit] = useState('');
+  const [tipoTutorEdit, setTipoTutorEdit] = useState('laborales');
+  const [estadoCuentaEdit, setEstadoCuentaEdit] = useState('activo');
+  const [cargandoEdicion, setCargandoEdicion] = useState(false);
+  const [errorEdicion, setErrorEdicion] = useState('');
+
+  const abrirModalEdicion = (docente) => {
+    setDocenteEditando(docente);
+    setEmailEdit(docente.email || '');
+    setNombresEdit(docente.nombres || '');
+    setDepartamentoEdit(docente.departamento || '');
+    setTipoTutorEdit(docente.tipoTutor || 'laborales');
+    setEstadoCuentaEdit(docente.estadoCuenta || 'activo');
+    setErrorEdicion('');
+    setModalEdicionAbierto(true);
+  };
 
   // Estados para el Modal de Contraseña Generada (Opción B)
   const [claveGenerada, setClaveGenerada] = useState('');
@@ -112,6 +135,38 @@ const GestionDocentes = () => {
     }
   };
 
+  const registrarActualizacionDocente = async (e) => {
+    e.preventDefault();
+    setErrorEdicion('');
+
+    if (!emailEdit.endsWith('@espoch.edu.ec')) {
+      setErrorEdicion('Debes registrar un correo institucional de la ESPOCH (@espoch.edu.ec).');
+      return;
+    }
+
+    setCargandoEdicion(true);
+
+    try {
+      const response = await api.put(`/admin/docentes/${docenteEditando.id}`, {
+        email: emailEdit,
+        nombres: nombresEdit,
+        departamento: departamentoEdit,
+        tipoTutor: tipoTutorEdit,
+        estadoCuenta: estadoCuentaEdit,
+      });
+
+      if (response.data.success) {
+        setModalEdicionAbierto(false);
+        cargarDocentes(); // Recargar lista
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorEdicion(err.response?.data?.message || 'Error al actualizar al docente.');
+    } finally {
+      setCargandoEdicion(false);
+    }
+  };
+
   const copiarClave = () => {
     navigator.clipboard.writeText(claveGenerada);
     setCopiado(true);
@@ -192,12 +247,13 @@ const GestionDocentes = () => {
                     <th className="px-3.5 py-3 text-left w-[180px]">Paralelo Asignado</th>
                     <th className="px-3.5 py-3 text-center w-[120px]">Alumnos Activos</th>
                     <th className="px-3.5 py-3 text-center w-[100px]">Estado Cuenta</th>
+                    <th className="px-3.5 py-3 text-center w-[85px]">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white font-semibold text-slate-700">
                   {docentesFiltrados.map((doc) => {
                     const esActivo = doc.estadoCuenta === 'activo';
-
+ 
                     return (
                       <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors divide-x divide-slate-100 text-[11px]">
                         <td className="px-3.5 py-2.5">
@@ -264,6 +320,15 @@ const GestionDocentes = () => {
                             {esActivo ? 'Activo' : 'Inactivo'}
                           </span>
                         </td>
+                        <td className="px-3.5 py-2.5 text-center">
+                          <button
+                            onClick={() => abrirModalEdicion(doc)}
+                            className="inline-flex items-center justify-center p-1.5 bg-white text-slate-700 hover:text-[#ec3724] border border-slate-250 hover:border-slate-350 rounded-lg shadow-sm transition-all active:scale-95"
+                            title="Editar Docente"
+                          >
+                            <FiEdit className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -277,14 +342,8 @@ const GestionDocentes = () => {
         {modalAbierto && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
             <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl overflow-hidden animate-scale-up border border-slate-200">
-              <div className="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+              <div className="p-5 border-b border-slate-200 bg-slate-50 flex items-center">
                 <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Registrar Docente Tutor</h3>
-                <button
-                  onClick={() => setModalAbierto(false)}
-                  className="text-slate-400 hover:text-slate-600 font-bold"
-                >
-                  Cerrar
-                </button>
               </div>
 
               <form onSubmit={registrarDocente}>
@@ -345,14 +404,15 @@ const GestionDocentes = () => {
                       Especialidad o Tipo de Tutoría
                     </label>
                     <div className="relative">
-                      <FiBriefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <FiBriefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-450" />
                       <select
                         value={tipoTutor}
                         onChange={(e) => setTipoTutor(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-700 cursor-pointer appearance-none"
+                        className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-750 cursor-pointer appearance-none animate-fadeIn"
                       >
                         <option value="laborales">Solo Prácticas Laborales</option>
                         <option value="comunales">Solo Prácticas Comunitarias</option>
+                        <option value="ambas">Ambas (Laborales y Comunitarias)</option>
                       </select>
                     </div>
                   </div>
@@ -449,6 +509,131 @@ const GestionDocentes = () => {
                   Entendido y Guardado
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Edición de Docente */}
+        {modalEdicionAbierto && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+            <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl overflow-hidden animate-scale-up border border-slate-200">
+              <div className="p-5 border-b border-slate-200 bg-slate-50 flex items-center">
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Editar Docente Tutor</h3>
+              </div>
+
+              <form onSubmit={registrarActualizacionDocente}>
+                <div className="p-6 space-y-4">
+                  {errorEdicion && (
+                    <div className="bg-rose-50 text-[#ec3724] border border-rose-150 rounded-lg p-4 flex items-center gap-2 text-xs font-bold leading-relaxed">
+                      <FiAlertCircle className="h-4.5 w-4.5 flex-shrink-0" />
+                      <span>{errorEdicion}</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                      Nombre Completo
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={nombresEdit}
+                      onChange={(e) => setNombresEdit(e.target.value)}
+                      placeholder="Ej. Ing. Juan Carlos Pérez"
+                      className="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                      Correo Institucional (@espoch.edu.ec)
+                    </label>
+                    <div className="relative">
+                      <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="email"
+                        required
+                        value={emailEdit}
+                        onChange={(e) => setEmailEdit(e.target.value)}
+                        placeholder="juan.perez@espoch.edu.ec"
+                        className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                      Departamento Académico
+                    </label>
+                    <input
+                      type="text"
+                      value={departamentoEdit}
+                      onChange={(e) => setDepartamentoEdit(e.target.value)}
+                      placeholder="Ej. Departamento de Computación"
+                      className="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                      Especialidad o Tipo de Tutoría
+                    </label>
+                    <div className="relative">
+                      <FiBriefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-450" />
+                      <select
+                        value={tipoTutorEdit}
+                        onChange={(e) => setTipoTutorEdit(e.target.value)}
+                        className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-750 cursor-pointer appearance-none"
+                      >
+                        <option value="laborales">Solo Prácticas Laborales</option>
+                        <option value="comunales">Solo Prácticas Comunitarias</option>
+                        <option value="ambas">Ambas (Laborales y Comunitarias)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                      Estado de la Cuenta
+                    </label>
+                    <select
+                      value={estadoCuentaEdit}
+                      onChange={(e) => setEstadoCuentaEdit(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-700 cursor-pointer appearance-none animate-fadeIn"
+                    >
+                      <option value="activo">Activo</option>
+                      <option value="inactivo">Inactivo</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="p-5 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalEdicionAbierto(false)}
+                    className="inline-flex items-center justify-center px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={cargandoEdicion}
+                    className="inline-flex items-center justify-center px-5 py-2.5 bg-[#ec3724] text-white hover:bg-[#d32010] rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all active:scale-[0.98]"
+                  >
+                    {cargandoEdicion ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin h-3.5 w-3.5 mr-2 text-white" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Guardando...
+                      </span>
+                    ) : (
+                      'Guardar Cambios'
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

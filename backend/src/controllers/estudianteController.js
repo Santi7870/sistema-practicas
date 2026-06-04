@@ -875,6 +875,49 @@ const descargarMiEntrega = async (req, res) => {
   }
 };
 
+const descargarPlantillaTareaEstudiante = async (req, res) => {
+  try {
+    const { tareaId } = req.params;
+
+    const estudiante = await Estudiante.findOne({ where: { usuarioId: req.usuario.id } });
+    if (!estudiante) return res.status(404).json({ success: false, message: 'Estudiante no encontrado.' });
+
+    const tarea = await Tarea.findByPk(tareaId);
+    if (!tarea) return res.status(404).json({ success: false, message: 'Tarea no encontrada.' });
+
+    // Validate active enrollment matching the task's practice type and tutor (docente)
+    const inscripcion = await Inscripcion.findOne({
+      where: {
+        estudianteId: estudiante.id,
+        activa: true,
+        tipoPractica: tarea.tipoPractica,
+        tutorId: tarea.docenteId,
+      }
+    });
+
+    if (!inscripcion) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado. No está autorizado para descargar archivos de esta tarea o no corresponde a su paralelo tutorado activo.'
+      });
+    }
+
+    if (!tarea.templatePath) {
+      return res.status(404).json({ success: false, message: 'Plantilla no disponible para esta tarea.' });
+    }
+
+    const filePath = path.resolve(tarea.templatePath);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, message: 'Archivo de plantilla no encontrado.' });
+    }
+
+    return res.download(filePath, tarea.templateName);
+  } catch (error) {
+    console.error('Error en descargarPlantillaTareaEstudiante:', error);
+    return res.status(500).json({ success: false, message: 'Error al descargar archivo base.', error: error.message });
+  }
+};
+
 module.exports = {
   obtenerPerfil,
   completarDatos,
@@ -886,4 +929,5 @@ module.exports = {
   obtenerMisCalificaciones,
   previewMiEntrega,
   descargarMiEntrega,
+  descargarPlantillaTareaEstudiante,
 };

@@ -170,7 +170,7 @@ const obtenerEstudiantes = async (req, res) => {
 
     // Construir filtros
     const whereEstudiante = {};
-    const whereUsuario = { rol: 'estudiante' };
+    const whereUsuario = { rol: 'estudiante', estadoCuenta: ESTADOS_CUENTA.ACTIVO };
 
     if (estado && estado !== 'todos') {
       whereEstudiante.estadoProceso = estado;
@@ -482,28 +482,43 @@ const obtenerEstadisticas = async (req, res) => {
       where: { estadoCuenta: ESTADOS_CUENTA.PENDIENTE },
     });
 
+    const includeUsuarioActivo = [
+      {
+        model: Usuario,
+        as: 'usuario',
+        where: { estadoCuenta: ESTADOS_CUENTA.ACTIVO },
+      },
+    ];
+
     // Contar estudiantes por estado
     const sinAsignar = await Estudiante.count({
       where: { estadoProceso: ESTADOS_PROCESO.SIN_ASIGNAR },
+      include: includeUsuarioActivo,
     });
 
     const asignados = await Estudiante.count({
       where: { estadoProceso: ESTADOS_PROCESO.ASIGNADO },
+      include: includeUsuarioActivo,
     });
 
     const pendienteInicio = await Estudiante.count({
       where: { estadoProceso: ESTADOS_PROCESO.PENDIENTE_INICIO },
+      include: includeUsuarioActivo,
     });
 
     const enProceso = await Estudiante.count({
       where: { estadoProceso: ESTADOS_PROCESO.EN_PROCESO },
+      include: includeUsuarioActivo,
     });
 
     const finalizados = await Estudiante.count({
       where: { estadoProceso: ESTADOS_PROCESO.FINALIZADO },
+      include: includeUsuarioActivo,
     });
 
-    const totalEstudiantes = await Estudiante.count();
+    const totalEstudiantes = await Estudiante.count({
+      include: includeUsuarioActivo,
+    });
 
     // Contar docentes totales
     const totalDocentes = await Docente.count();
@@ -691,6 +706,78 @@ const obtenerDocentes = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error al obtener la lista de docentes.',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    Actualizar datos y estado de cuenta de un docente tutor
+ * @route   PUT /api/admin/docentes/:docenteId
+ * @access  Private/Admin
+ */
+const actualizarDocente = async (req, res) => {
+  try {
+    const { docenteId } = req.params;
+    const { email, nombres, departamento, tipoTutor, estadoCuenta } = req.body;
+
+    const docente = await Docente.findByPk(docenteId, {
+      include: [{ model: Usuario, as: 'usuario' }],
+    });
+
+    if (!docente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Docente no encontrado.',
+      });
+    }
+
+    if (email && email !== docente.usuario.email) {
+      if (!email.endsWith('@espoch.edu.ec')) {
+        return res.status(400).json({
+          success: false,
+          message: 'El correo debe ser institucional (@espoch.edu.ec).',
+        });
+      }
+
+      const emailDuplicado = await Usuario.findOne({ where: { email } });
+      if (emailDuplicado) {
+        return res.status(400).json({
+          success: false,
+          message: 'Este correo ya se encuentra registrado por otro usuario.',
+        });
+      }
+
+      await docente.usuario.update({ email });
+    }
+
+    if (estadoCuenta) {
+      await docente.usuario.update({ estadoCuenta });
+    }
+
+    await docente.update({
+      nombres: nombres || docente.nombres,
+      departamento: departamento !== undefined ? departamento : docente.departamento,
+      tipoTutor: tipoTutor || docente.tipoTutor,
+    });
+
+    res.json({
+      success: true,
+      message: 'Docente tutor actualizado exitosamente.',
+      data: {
+        id: docente.id,
+        email: docente.usuario.email,
+        nombres: docente.nombres,
+        departamento: docente.departamento,
+        tipoTutor: docente.tipoTutor,
+        estadoCuenta: docente.usuario.estadoCuenta,
+      },
+    });
+  } catch (error) {
+    console.error('Error en actualizarDocente:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar el docente.',
       error: error.message,
     });
   }
@@ -1070,6 +1157,7 @@ module.exports = {
   obtenerEstadisticas,
   crearDocente,
   obtenerDocentes,
+  actualizarDocente,
   autoAsignarTutores,
   asignarTutorManual,
   obtenerCalificacionesEstudiante,
