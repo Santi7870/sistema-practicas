@@ -95,7 +95,9 @@ const Convenio = sequelize.define(
     },
     fechaVencimiento: {
       type: DataTypes.DATEONLY,
-      allowNull: false,
+      // En BD se permite NULL para no romper registros heredados ya existentes.
+      // La obligatoriedad para convenios nuevos y editados se controla en los controladores.
+      allowNull: true,
       field: 'fecha_vencimiento',
     },
     fechaLimiteRequisitos: {
