@@ -22,6 +22,7 @@ app.use('/api/convenios', require('./routes/convenioRoutes'));
 app.use('/api/inscripciones', require('./routes/inscripcionRoutes'));
 app.use('/api/documentos', require('./routes/documentoRoutes'));
 app.use('/api/notificaciones', require('./routes/notificacionRoutes'));
+app.use('/api/formatos', require('./routes/formatoRoutes'));
 
 // Ruta de health check
 app.get('/api/health', (req, res) => {

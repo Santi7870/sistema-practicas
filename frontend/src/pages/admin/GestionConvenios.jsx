@@ -19,6 +19,7 @@ import {
   FiUpload,
   FiCheck,
   FiFileText,
+  FiCalendar,
 } from 'react-icons/fi';
 
 const GestionConvenios = () => {
@@ -33,6 +34,7 @@ const GestionConvenios = () => {
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmCancelPrevisualizacion, setConfirmCancelPrevisualizacion] = useState(false);
+  const [tabActiva, setTabActiva] = useState('todos'); // 'todos', 'vigentes', 'expirados'
 
   // Estados para Carga Masiva desde Excel
   const [modoPrevisualizacion, setModoPrevisualizacion] = useState(false);
@@ -41,14 +43,21 @@ const GestionConvenios = () => {
   const [sheetSeleccionada, setSheetSeleccionada] = useState('');
   const [sheetsDataReferencia, setSheetsDataReferencia] = useState({});
   const [guardandoMasivo, setGuardandoMasivo] = useState(false);
+  const [erroresPrevisualizacion, setErroresPrevisualizacion] = useState({});
+
+  // Estados para Plazo Compartido Global
+  const [fechaGlobalInput, setFechaGlobalInput] = useState('');
+  const [propagarCambio, setPropagarCambio] = useState(false);
+  const [guardandoConfig, setGuardandoConfig] = useState(false);
 
   useEffect(() => {
     cargarConvenios();
+    cargarConfiguraciones();
   }, []);
 
   useEffect(() => {
     filtrarConvenios();
-  }, [busqueda, convenios]);
+  }, [busqueda, convenios, tabActiva]);
 
   // Auxiliares para procesamiento inteligente de Excel
   const determinarArea = (actividades) => {
@@ -251,16 +260,43 @@ const GestionConvenios = () => {
                   continue;
                 }
 
+                let rawContacto = colIndices.contacto !== -1 ? cleanCellText(row[colIndices.contacto]) : '';
+                let rawTelefono = colIndices.telefono !== -1 ? cleanCellText(row[colIndices.telefono]) : '';
+                let rawHorario = colIndices.horario !== -1 ? cleanCellText(row[colIndices.horario]) : '';
+
+                // Clean telephone placeholders (like "Celular/Convencional" or any string without any digits)
+                if (rawTelefono && !/[0-9]/.test(rawTelefono)) {
+                  rawTelefono = '';
+                }
+
+                // Clean schedule placeholders (like "Ej. A convenir" or "A convenir" or "Ej.")
+                if (rawHorario.toLowerCase() === 'ej. a convenir' || rawHorario.toLowerCase() === 'ej.') {
+                  rawHorario = '';
+                }
+
+                // Clean contact placeholders (like "Contacto / Tutor", "Tutor/Representante", "Tutor / Representante", "Contacto/Tutor")
+                const contactoLower = rawContacto.toLowerCase().trim();
+                if (
+                  contactoLower === 'contacto / tutor' ||
+                  contactoLower === 'contacto/tutor' ||
+                  contactoLower === 'tutor/representante' ||
+                  contactoLower === 'tutor / representante' ||
+                  contactoLower === 'responsable'
+                ) {
+                  rawContacto = '';
+                }
+
                 parsedRows.push({
                   id: `excel_${sheetName}_${r}_${Date.now()}`,
                   nombreEmpresa: cleanCellText(row[colIndices.nombreEmpresa]),
-                  contacto: colIndices.contacto !== -1 ? cleanCellText(row[colIndices.contacto]) : '',
-                  telefono: colIndices.telefono !== -1 ? cleanCellText(row[colIndices.telefono]) : '',
+                  contacto: rawContacto,
+                  telefono: rawTelefono,
                   actividades: actividadesText,
-                  horario: colIndices.horario !== -1 ? cleanCellText(row[colIndices.horario]) : '',
+                  horario: rawHorario,
                   cuposLaboralesTotales: cuposLaborales,
                   cuposComunitariosTotales: cuposComunitarios,
-                  area: determinarArea(actividadesText)
+                  area: determinarArea(actividadesText),
+                  fechaVencimiento: ''
                 });
               }
 
@@ -287,6 +323,7 @@ const GestionConvenios = () => {
         const defaultSheet = hojasCompatiblesArr[0].name;
         setSheetSeleccionada(defaultSheet);
         setDatosPrevisualizacion(sheetsDataObj[defaultSheet]);
+        setErroresPrevisualizacion({});
         setModoPrevisualizacion(true);
         setMensaje({ tipo: 'success', texto: `Excel cargado exitosamente. Pestaña detectada: "${defaultSheet}"` });
       } catch (err) {
@@ -303,6 +340,7 @@ const GestionConvenios = () => {
   const handleCambiarPestaña = (sheetName) => {
     setSheetSeleccionada(sheetName);
     setDatosPrevisualizacion(sheetsDataReferencia[sheetName] || []);
+    setErroresPrevisualizacion({});
   };
 
   // Editar celda en previsualización
@@ -310,11 +348,21 @@ const GestionConvenios = () => {
     setDatosPrevisualizacion(prev =>
       prev.map(row => (row.id === id ? { ...row, [field]: value } : row))
     );
+    setErroresPrevisualizacion(prev => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
   };
 
   // Eliminar fila de previsualización
   const handleEliminarFilaPrevisualizacion = (id) => {
     setDatosPrevisualizacion(prev => prev.filter(row => row.id !== id));
+    setErroresPrevisualizacion(prev => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
   };
 
   // Guardar Todo en la base de datos
@@ -325,9 +373,29 @@ const GestionConvenios = () => {
     }
 
     // Validar celdas requeridas
-    const invalidos = datosPrevisualizacion.filter(d => !d.nombreEmpresa.trim() || !d.area.trim());
+    const invalidos = datosPrevisualizacion.filter(d => !d.nombreEmpresa.trim() || !d.area.trim() || !d.fechaVencimiento);
     if (invalidos.length > 0) {
-      setMensaje({ tipo: 'error', texto: 'Existen celdas obligatorias vacías (Nombre de Empresa o Área).' });
+      setMensaje({ tipo: 'error', texto: 'Existen celdas obligatorias vacías o sin asignar (Nombre de Empresa, Área o Fecha de Vencimiento).' });
+      return;
+    }
+
+    // Validar duplicados en el Excel listado
+    const nombresVistos = new Set();
+    const duplicados = [];
+    for (const d of datosPrevisualizacion) {
+      const clean = d.nombreEmpresa.trim().toLowerCase();
+      if (clean) {
+        if (nombresVistos.has(clean)) {
+          duplicados.push(d.nombreEmpresa.trim());
+        }
+        nombresVistos.add(clean);
+      }
+    }
+    if (duplicados.length > 0) {
+      setMensaje({
+        tipo: 'error',
+        texto: `No se puede guardar: el archivo contiene nombres de empresa duplicados: ${[...new Set(duplicados)].join(', ')}. Por favor, elimine o edite las filas duplicadas (usando el ícono de papelera) antes de continuar.`
+      });
       return;
     }
 
@@ -338,19 +406,34 @@ const GestionConvenios = () => {
       const response = await api.post('/convenios/bulk', { convenios: datosPrevisualizacion });
       setMensaje({
         tipo: 'success',
-        texto: `¡Carga masiva completada! ${response.data.data.cantidadCreados} convenios creados/actualizados con éxito.`
+        texto: response.data.message || `¡Carga masiva completada! ${response.data.data.cantidadCreados} convenios creados/actualizados con éxito.`
       });
       setModoPrevisualizacion(false);
       setDatosPrevisualizacion([]);
       setHojasCompatibles([]);
       setSheetsDataReferencia({});
+      setErroresPrevisualizacion({});
       cargarConvenios();
     } catch (err) {
       console.error(err);
-      setMensaje({
-        tipo: 'error',
-        texto: err.response?.data?.message || err.message || 'Error al guardar convenios masivamente.'
-      });
+      if (err.response?.status === 400 && err.response?.data?.errores) {
+        const mapErrores = {};
+        err.response.data.errores.forEach(errObj => {
+          if (errObj.id) {
+            mapErrores[errObj.id] = errObj.error;
+          }
+        });
+        setErroresPrevisualizacion(mapErrores);
+        setMensaje({
+          tipo: 'error',
+          texto: err.response.data.message || 'Se encontraron errores de validación en la lista. Por favor corrige las celdas resaltadas.'
+        });
+      } else {
+        setMensaje({
+          tipo: 'error',
+          texto: err.response?.data?.message || err.message || 'Error al guardar convenios masivamente.'
+        });
+      }
     } finally {
       setGuardandoMasivo(false);
     }
@@ -367,19 +450,79 @@ const GestionConvenios = () => {
     }
   };
 
+  const cargarConfiguraciones = async () => {
+    try {
+      const response = await api.get('/admin/configuraciones');
+      const limitConfig = response.data.data.find(c => c.clave === 'fecha_limite_requisitos_global');
+      if (limitConfig) {
+        setFechaGlobalInput(limitConfig.valor || '');
+      }
+    } catch (error) {
+      console.error('Error al cargar configuraciones:', error);
+    }
+  };
+
+  const handleGuardarConfigGlobal = async (e) => {
+    e.preventDefault();
+    setGuardandoConfig(true);
+    setMensaje({ tipo: '', texto: '' });
+    try {
+      await api.put('/admin/configuraciones/fecha_limite_requisitos_global', {
+        valor: fechaGlobalInput,
+        propagar: propagarCambio
+      });
+      setMensaje({
+        tipo: 'success',
+        texto: propagarCambio
+          ? 'Plazo global actualizado y propagado con éxito a todas las inscripciones pendientes.'
+          : 'Plazo global de requisitos guardado con éxito.'
+      });
+      cargarConfiguraciones();
+      setPropagarCambio(false);
+      setTimeout(() => setMensaje({ tipo: '', texto: '' }), 5000);
+    } catch (err) {
+      console.error(err);
+      setMensaje({
+        tipo: 'error',
+        texto: err.response?.data?.message || err.message || 'Error al actualizar el plazo global.'
+      });
+    } finally {
+      setGuardandoConfig(false);
+    }
+  };
+
   const filtrarConvenios = () => {
     setPaginaActual(1);
-    if (!busqueda.trim()) {
-      setConveniosFiltrados(convenios);
-      return;
+    
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const hoyStr = `${year}-${month}-${day}`;
+
+    let filtrados = [...convenios];
+
+    // 1. Filtrar por tab activa (vigencia)
+    if (tabActiva === 'vigentes') {
+      filtrados = filtrados.filter(
+        (conv) => !conv.fechaVencimiento || conv.fechaVencimiento >= hoyStr
+      );
+    } else if (tabActiva === 'expirados') {
+      filtrados = filtrados.filter(
+        (conv) => conv.fechaVencimiento && conv.fechaVencimiento < hoyStr
+      );
     }
 
-    const busquedaLower = busqueda.toLowerCase();
-    const filtrados = convenios.filter(
-      (conv) =>
-        conv.nombreEmpresa.toLowerCase().includes(busquedaLower) ||
-        conv.area.toLowerCase().includes(busquedaLower)
-    );
+    // 2. Filtrar por búsqueda
+    if (busqueda.trim()) {
+      const busquedaLower = busqueda.toLowerCase();
+      filtrados = filtrados.filter(
+        (conv) =>
+          conv.nombreEmpresa.toLowerCase().includes(busquedaLower) ||
+          conv.area.toLowerCase().includes(busquedaLower)
+      );
+    }
+
     setConveniosFiltrados(filtrados);
   };
 
@@ -453,74 +596,115 @@ const GestionConvenios = () => {
         <div className="max-w-[95%] mx-auto px-4 py-6 space-y-6">
           
           {/* Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
             <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#ec3724]"></div>
-            <div className="pl-2">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-50 text-emerald-800 border border-emerald-200 tracking-wider">
-                  <FiCheck className="h-3 w-3" />
-                  <span>Modo Revisor Masivo</span>
-                </span>
-                {hojasCompatibles.length > 1 && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[9px] font-black uppercase bg-blue-50 text-blue-800 border border-blue-200 tracking-wider">
-                    {hojasCompatibles.length} Pestañas Detectadas
+            
+            {/* Fila principal: Título y Botones de Acción */}
+            <div className="p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="pl-2">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-50 text-emerald-800 border border-emerald-200 tracking-wider">
+                    <FiCheck className="h-3 w-3" />
+                    <span>Modo Revisor Masivo</span>
+                  </span>
+                  {hojasCompatibles.length > 1 && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[9px] font-black uppercase bg-blue-50 text-blue-800 border border-blue-200 tracking-wider">
+                      {hojasCompatibles.length} Pestañas Detectadas
+                    </span>
+                  )}
+                </div>
+                <h1 className="text-xl font-black text-slate-900 uppercase tracking-wide">
+                  Previsualización e Importación Masiva
+                </h1>
+                <p className="text-xs font-semibold text-slate-500 mt-1 max-w-2xl leading-normal">
+                  Extracción de convenios mediante mapeo inteligente de columnas. Puedes editar cualquier celda directamente en la cuadrícula o descartar filas.
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-3 self-end lg:self-center">
+                <button
+                  onClick={() => setConfirmCancelPrevisualizacion(true)}
+                  className="inline-flex items-center justify-center px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all"
+                  disabled={guardandoMasivo}
+                >
+                  Cancelar
+                </button>
+                
+                <button
+                  onClick={handleGuardarMasivo}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#ec3724] hover:bg-[#d32010] text-white rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all active:scale-[0.98]"
+                  disabled={guardandoMasivo || datosPrevisualizacion.length === 0}
+                >
+                  {guardandoMasivo ? (
+                    <>
+                      <svg className="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <span>Guardando Registros...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiSave className="h-3.5 w-3.5" />
+                      <span>Guardar {datosPrevisualizacion.length} Convenios</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Barra de Herramientas: Configuración de Pestaña y Fecha Masiva */}
+            <div className="bg-slate-50 border-t border-slate-200/80 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              {/* Selección de pestaña del excel */}
+              <div className="flex items-center gap-2.5">
+                {hojasCompatibles.length > 1 ? (
+                  <>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Pestaña del Archivo:</label>
+                    <select
+                      value={sheetSeleccionada}
+                      onChange={(e) => handleCambiarPestaña(e.target.value)}
+                      className="border border-slate-300 rounded-lg py-1.5 px-3 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-bold text-slate-800 cursor-pointer shadow-sm"
+                    >
+                      {hojasCompatibles.map((sheet) => (
+                        <option key={sheet.name} value={sheet.name}>
+                          {sheet.name} (Calidad: {sheet.score})
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                ) : (
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Pestaña activa: <strong className="text-slate-700">{sheetSeleccionada}</strong>
                   </span>
                 )}
               </div>
-              <h1 className="text-xl font-black text-slate-900 uppercase tracking-wide">
-                Previsualización e Importación Masiva
-              </h1>
-              <p className="text-xs font-semibold text-slate-500 mt-1 max-w-2xl leading-normal">
-                Extracción de convenios mediante mapeo inteligente de columnas. Puedes editar cualquier celda directamente en la cuadrícula, cambiar de pestaña o descartar filas. Los registros homónimos se actualizarán de forma automática.
-              </p>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-2.5">
-              {hojasCompatibles.length > 1 && (
-                <div className="flex items-center gap-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Pestaña:</label>
-                  <select
-                    value={sheetSeleccionada}
-                    onChange={(e) => handleCambiarPestaña(e.target.value)}
-                    className="border border-slate-350 rounded-lg py-1.5 px-3 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-bold text-slate-800 cursor-pointer"
-                  >
-                    {hojasCompatibles.map((sheet) => (
-                      <option key={sheet.name} value={sheet.name}>
-                        {sheet.name} (Calidad: {sheet.score})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
-              <button
-                onClick={() => setConfirmCancelPrevisualizacion(true)}
-                className="inline-flex items-center justify-center px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all"
-                disabled={guardandoMasivo}
-              >
-                Cancelar
-              </button>
-              
-              <button
-                onClick={handleGuardarMasivo}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all active:scale-[0.98]"
-                disabled={guardandoMasivo || datosPrevisualizacion.length === 0}
-              >
-                {guardandoMasivo ? (
-                  <>
-                    <svg className="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    <span>Guardando Registros...</span>
-                  </>
-                ) : (
-                  <>
-                    <FiSave className="h-3.5 w-3.5" />
-                    <span>Guardar {datosPrevisualizacion.length} Convenios</span>
-                  </>
-                )}
-              </button>
+              {/* Asignación masiva de fecha de vencimiento */}
+              <div className="flex items-center gap-3 bg-white p-1.5 px-3 border border-slate-250/60 rounded-xl shadow-sm">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Asignar Vencimiento Masivo:</label>
+                <input
+                  type="date"
+                  id="fechaMasivaInput"
+                  className="border border-slate-300 rounded-lg py-1 px-2.5 text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800 cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const dateVal = document.getElementById('fechaMasivaInput').value;
+                    if (!dateVal) {
+                      setMensaje({ tipo: 'error', texto: 'Por favor selecciona una fecha válida antes de aplicar de forma masiva.' });
+                      return;
+                    }
+                    setDatosPrevisualizacion(prev =>
+                      prev.map(row => ({ ...row, fechaVencimiento: dateVal }))
+                    );
+                    setMensaje({ tipo: 'success', texto: `Se aplicó la fecha de vencimiento ${dateVal} a todos los convenios listados.` });
+                  }}
+                  className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-black text-[9px] uppercase tracking-wider shadow-sm transition-all whitespace-nowrap"
+                >
+                  Aplicar a Todos
+                </button>
+              </div>
             </div>
           </div>
 
@@ -598,6 +782,7 @@ const GestionConvenios = () => {
                     <th className="py-3 px-3.5 w-[180px]">Contacto / Tutor</th>
                     <th className="py-3 px-3.5 w-[120px]">Teléfono</th>
                     <th className="py-3 px-3.5 w-[120px]">Horario</th>
+                    <th className="py-3 px-3.5 w-[130px]">Vencimiento *</th>
                     <th className="py-3 px-3.5 w-[280px]">Actividades del Convenio</th>
                     <th className="py-3 px-3.5 text-center w-[70px] sticky right-0 bg-slate-100 z-10">Eliminar</th>
                   </tr>
@@ -605,20 +790,20 @@ const GestionConvenios = () => {
                 <tbody className="divide-y divide-slate-200 text-[11px] font-semibold text-slate-700">
                   {datosPrevisualizacion.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="text-center py-12 text-slate-500 font-bold bg-slate-50/50">
+                      <td colSpan="10" className="text-center py-12 text-slate-500 font-bold bg-slate-50/50">
                         No hay registros en esta pestaña. Selecciona otra pestaña en el menú superior.
                       </td>
                     </tr>
                   ) : (
                     datosPrevisualizacion.map((row) => (
-                      <tr key={row.id} className="hover:bg-slate-50/50 transition-colors divide-x divide-slate-100">
+                      <tr key={row.id} className={`hover:bg-slate-50/50 transition-colors divide-x divide-slate-100 ${erroresPrevisualizacion[row.id] ? 'bg-red-50/20' : ''}`}>
                         {/* Empresa */}
-                        <td className="p-2.5 sticky left-0 bg-white hover:bg-slate-50 z-10">
+                        <td className={`p-2.5 sticky left-0 z-10 ${erroresPrevisualizacion[row.id] ? 'bg-red-50/80 hover:bg-red-100/80' : 'bg-white hover:bg-slate-50'}`}>
                           <input
                             type="text"
                             value={row.nombreEmpresa}
                             onChange={(e) => handleCellChange(row.id, 'nombreEmpresa', e.target.value)}
-                            className={`w-full bg-transparent border-b border-dashed focus:outline-none focus:border-[#ec3724] px-1 py-1 text-[11px] font-black text-slate-900 uppercase ${!row.nombreEmpresa.trim() ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                            className={`w-full bg-transparent border-b border-dashed focus:outline-none focus:border-[#ec3724] px-1 py-1 text-[11px] font-black text-slate-900 uppercase ${!row.nombreEmpresa.trim() ? 'border-red-400 bg-red-50' : erroresPrevisualizacion[row.id] ? 'border-red-400' : 'border-slate-300'}`}
                             placeholder="Nombre de la Empresa"
                           />
                           {(() => {
@@ -642,6 +827,12 @@ const GestionConvenios = () => {
                               </div>
                             );
                           })()}
+                          {erroresPrevisualizacion[row.id] && (
+                            <div className="flex items-start gap-1 mt-1.5 px-1 py-1 text-[9px] font-bold text-red-700 bg-red-100/60 border border-red-200 rounded leading-relaxed">
+                              <FiAlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0 text-red-650" />
+                              <span>{erroresPrevisualizacion[row.id]}</span>
+                            </div>
+                          )}
                         </td>
                         
                         {/* Area */}
@@ -696,7 +887,7 @@ const GestionConvenios = () => {
                             value={row.contacto}
                             onChange={(e) => {
                               const val = e.target.value;
-                              if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/.test(val)) {
+                              if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.,\-\(\)\/]*$/.test(val)) {
                                 handleCellChange(row.id, 'contacto', val);
                               }
                             }}
@@ -712,7 +903,7 @@ const GestionConvenios = () => {
                             value={row.telefono}
                             onChange={(e) => {
                               const val = e.target.value;
-                              if (/^[0-9]*$/.test(val)) {
+                              if (/^[0-9\s\-\+\/\(\)]*$/.test(val)) {
                                 handleCellChange(row.id, 'telefono', val);
                               }
                             }}
@@ -729,6 +920,16 @@ const GestionConvenios = () => {
                             onChange={(e) => handleCellChange(row.id, 'horario', e.target.value)}
                             className="w-full bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-[#ec3724] px-1 py-1 text-[11px] text-slate-900"
                             placeholder="Ej. A convenir"
+                          />
+                        </td>
+
+                        {/* Vencimiento */}
+                        <td className="p-2.5">
+                          <input
+                            type="date"
+                            value={row.fechaVencimiento || ''}
+                            onChange={(e) => handleCellChange(row.id, 'fechaVencimiento', e.target.value)}
+                            className={`w-full bg-transparent border-b border-dashed focus:outline-none focus:border-[#ec3724] py-1 text-[11px] font-bold text-slate-800 ${!row.fechaVencimiento ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
                           />
                         </td>
 
@@ -764,6 +965,48 @@ const GestionConvenios = () => {
               <span>Registros en esta pestaña: {datosPrevisualizacion.length}</span>
             </div>
           </div>
+          
+          {confirmCancelPrevisualizacion && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full overflow-hidden animate-scaleUp">
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center gap-3 text-amber-500">
+                    <div className="p-2 bg-amber-50 rounded-lg">
+                      <FiAlertCircle className="h-6 w-6 text-amber-500" />
+                    </div>
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                      Cancelar Importación
+                    </h3>
+                  </div>
+                  <p className="text-xs font-semibold text-slate-500 leading-relaxed">
+                    ¿Estás seguro de que deseas cancelar la importación? Se descartarán todos los datos cargados desde el archivo Excel.
+                  </p>
+                  <div className="flex items-center justify-end gap-2.5 pt-2">
+                    <button
+                      onClick={() => setConfirmCancelPrevisualizacion(false)}
+                      className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-700 font-bold text-[10px] uppercase tracking-wider transition-all"
+                    >
+                      No, continuar
+                    </button>
+                    <button
+                      onClick={() => {
+                        setConfirmCancelPrevisualizacion(false);
+                        setModoPrevisualizacion(false);
+                        setDatosPrevisualizacion([]);
+                        setHojasCompatibles([]);
+                        setSheetsDataReferencia({});
+                        setErroresPrevisualizacion({});
+                        setMensaje({ tipo: '', texto: '' });
+                      }}
+                      className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider shadow-sm transition-all"
+                    >
+                      Sí, cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -774,6 +1017,12 @@ const GestionConvenios = () => {
   const indiceUltimoConvenio = paginaActual * conveniosPorPagina;
   const indicePrimerConvenio = indiceUltimoConvenio - conveniosPorPagina;
   const conveniosPaginados = conveniosFiltrados.slice(indicePrimerConvenio, indiceUltimoConvenio);
+
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const hoyStr = `${year}-${month}-${day}`;
 
   return (
     <div className="min-h-screen bg-slate-50 animate-fadeIn">
@@ -820,6 +1069,94 @@ const GestionConvenios = () => {
           </div>
         )}
 
+        {/* Panel de Control de Plazos de Requisitos (Fase 1) */}
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500"></div>
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pl-2">
+            <div className="space-y-1">
+              <h2 className="text-xs font-black text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+                <FiClock className="h-4 w-4 text-amber-500" />
+                <span>Control de Plazo Compartido (Requisitos Fase 1)</span>
+              </h2>
+              <p className="text-[11px] font-semibold text-slate-500 leading-normal max-w-xl">
+                Define una fecha límite calendarizada que compartirán todos los estudiantes para subir sus documentos. Puedes cambiarla en cualquier momento y elegir si propagarla a los envíos pendientes actuales.
+              </p>
+            </div>
+            
+            <form onSubmit={handleGuardarConfigGlobal} className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+              {/* Input Date */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Fecha Límite Compartida</label>
+                <input
+                  type="date"
+                  value={fechaGlobalInput}
+                  onChange={(e) => setFechaGlobalInput(e.target.value)}
+                  className="border border-slate-300 rounded-lg py-1.5 px-3 text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold text-slate-800 cursor-pointer shadow-sm min-w-[150px]"
+                />
+              </div>
+
+              {/* Checkbox Propagar */}
+              {fechaGlobalInput && (
+                <div className="flex items-center gap-2 mt-4 lg:mt-3 bg-slate-50 p-2 rounded-lg border border-slate-150">
+                  <input
+                    type="checkbox"
+                    id="propagarCambio"
+                    checked={propagarCambio}
+                    onChange={(e) => setPropagarCambio(e.target.checked)}
+                    className="h-3.5 w-3.5 text-amber-500 border-slate-350 focus:ring-amber-500 rounded cursor-pointer"
+                  />
+                  <label htmlFor="propagarCambio" className="text-[10px] text-slate-650 font-black uppercase tracking-wider cursor-pointer">
+                    Propagar a Pendientes
+                  </label>
+                </div>
+              )}
+
+              {/* Botón Guardar */}
+              <button
+                type="submit"
+                disabled={guardandoConfig}
+                className="lg:mt-4 inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm transition-all active:scale-[0.98]"
+              >
+                {guardandoConfig ? 'Guardando...' : 'Aplicar Plazo'}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Tabs de Filtro de Vigencia */}
+        <div className="flex border-b border-slate-200/80 gap-6 mb-1">
+          <button
+            onClick={() => setTabActiva('todos')}
+            className={`pb-2.5 text-xs font-bold transition-all relative ${
+              tabActiva === 'todos'
+                ? 'text-[#ec3724] font-extrabold border-b border-[#ec3724] border-b-2'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Todos los Convenios ({convenios.length})
+          </button>
+          <button
+            onClick={() => setTabActiva('vigentes')}
+            className={`pb-2.5 text-xs font-bold transition-all relative ${
+              tabActiva === 'vigentes'
+                ? 'text-[#ec3724] font-extrabold border-b border-[#ec3724] border-b-2'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Vigentes / Activos ({convenios.filter(c => !c.fechaVencimiento || c.fechaVencimiento >= hoyStr).length})
+          </button>
+          <button
+            onClick={() => setTabActiva('expirados')}
+            className={`pb-2.5 text-xs font-bold transition-all relative ${
+              tabActiva === 'expirados'
+                ? 'text-[#ec3724] font-extrabold border-b border-[#ec3724] border-b-2'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Vencidos / Expirados ({convenios.filter(c => c.fechaVencimiento && c.fechaVencimiento < hoyStr).length})
+          </button>
+        </div>
+
         {/* Barra de búsqueda */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
           <div className="relative w-full">
@@ -863,19 +1200,37 @@ const GestionConvenios = () => {
                         {convenio.area}
                       </span>
                     </div>
-                    <span
-                      className={`inline-flex px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border flex-shrink-0 ${
-                        convenio.activo
-                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                          : 'bg-slate-50 border-slate-200 text-slate-450'
-                      }`}
-                    >
-                      {convenio.activo ? 'Activo' : 'Inactivo'}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {convenio.fechaVencimiento && convenio.fechaVencimiento < hoyStr && (
+                        <span className="inline-flex px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border bg-red-50 border-red-200 text-red-700">
+                          Vencido
+                        </span>
+                      )}
+                      <span
+                        className={`inline-flex px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${
+                          convenio.activo
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                            : 'bg-slate-50 border-slate-200 text-slate-450'
+                        }`}
+                      >
+                        {convenio.activo ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Detalles del Convenio */}
                   <div className="space-y-2 mt-4 pt-3 border-t border-slate-100 text-[11px] font-semibold text-slate-600">
+                    {convenio.fechaVencimiento && (
+                      <div className="flex items-center gap-2 text-slate-700 font-bold">
+                        <FiCalendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                        <span>
+                          <strong className="text-slate-500 font-bold uppercase text-[9px] mr-1">Vigencia:</strong>
+                          <span className={convenio.fechaVencimiento < hoyStr ? 'text-[#ec3724]' : ''}>
+                            {convenio.fechaVencimiento}
+                          </span>
+                        </span>
+                      </div>
+                    )}
                     {convenio.contacto && (
                       <div className="flex items-center gap-2">
                         <FiUser className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
@@ -1010,15 +1365,15 @@ const GestionConvenios = () => {
                         eliminarConvenio(convenio.id, convenio.nombreEmpresa)
                       }
                       className="inline-flex items-center justify-center p-1.5 bg-white text-[#ec3724] hover:bg-rose-50 border border-slate-250 hover:border-rose-200 rounded-lg transition-all"
-                      disabled={convenio.cuposOcupados > 0}
-                      title={convenio.cuposOcupados > 0 ? 'No se puede eliminar (tiene estudiantes asignados)' : 'Eliminar Convenio'}
+                      disabled={convenio.cuposOcupados > 0 && !(convenio.fechaVencimiento && convenio.fechaVencimiento < hoyStr)}
+                      title={convenio.cuposOcupados > 0 && !(convenio.fechaVencimiento && convenio.fechaVencimiento < hoyStr) ? 'No se puede eliminar (convenio vigente con estudiantes asignados)' : 'Eliminar Convenio'}
                     >
                       <FiTrash2 className="h-4 w-4" />
                     </button>
                   </div>
-                  {convenio.cuposOcupados > 0 && (
+                  {convenio.cuposOcupados > 0 && !(convenio.fechaVencimiento && convenio.fechaVencimiento < hoyStr) && (
                     <p className="text-[9px] font-black uppercase text-slate-400 text-center tracking-wider bg-slate-50 py-1 rounded border border-slate-200">
-                      No se puede eliminar (estudiantes asignados)
+                      No se puede eliminar (vigente con estudiantes asignados)
                     </p>
                   )}
                 </div>
@@ -1127,6 +1482,7 @@ const GestionConvenios = () => {
                       setDatosPrevisualizacion([]);
                       setHojasCompatibles([]);
                       setSheetsDataReferencia({});
+                      setErroresPrevisualizacion({});
                       setMensaje({ tipo: '', texto: '' });
                     }}
                     className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider shadow-sm transition-all"
@@ -1155,6 +1511,7 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
     cuposLaboralesTotales: convenio?.cuposLaboralesTotales !== undefined ? convenio.cuposLaboralesTotales : 0,
     cuposComunitariosTotales: convenio?.cuposComunitariosTotales !== undefined ? convenio.cuposComunitariosTotales : 0,
     activo: convenio?.activo !== undefined ? convenio.activo : true,
+    fechaVencimiento: convenio?.fechaVencimiento || '',
   });
 
   const [errors, setErrors] = useState({});
@@ -1169,6 +1526,10 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
 
     if (!formData.area.trim()) {
       nuevosErrores.area = 'El área es requerida';
+    }
+
+    if (!formData.fechaVencimiento) {
+      nuevosErrores.fechaVencimiento = 'La fecha de vencimiento es requerida';
     }
 
     const labVal = formData.cuposLaboralesTotales === '' ? 0 : parseInt(formData.cuposLaboralesTotales, 10);
@@ -1216,6 +1577,7 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
       ...formData,
       cuposLaboralesTotales: formData.cuposLaboralesTotales === '' ? 0 : parseInt(formData.cuposLaboralesTotales, 10),
       cuposComunitariosTotales: formData.cuposComunitariosTotales === '' ? 0 : parseInt(formData.cuposComunitariosTotales, 10),
+      fechaVencimiento: formData.fechaVencimiento === '' ? null : formData.fechaVencimiento,
     };
 
     try {
@@ -1329,7 +1691,7 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
                   value={formData.contacto}
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/.test(val)) {
+                    if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.,\-\(\)\/]*$/.test(val)) {
                       setFormData({ ...formData, contacto: val });
                     }
                   }}
@@ -1348,7 +1710,7 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
                   value={formData.telefono}
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (/^[0-9]*$/.test(val)) {
+                    if (/^[0-9\s\-\+\/\(\)]*$/.test(val)) {
                       setFormData({ ...formData, telefono: val });
                     }
                   }}
@@ -1419,6 +1781,25 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
                   className="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
                   placeholder="Ej. Desarrollo de software, Administración de bases de datos, Soporte técnico..."
                 />
+              </div>
+
+              {/* Fecha de Vencimiento */}
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                  Fecha de Vencimiento (Límite de Vigencia) *
+                </label>
+                <input
+                  type="date"
+                  value={formData.fechaVencimiento}
+                  onChange={(e) => setFormData({ ...formData, fechaVencimiento: e.target.value })}
+                  className={`w-full border rounded-lg px-3.5 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800 ${errors.fechaVencimiento ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                />
+                {errors.fechaVencimiento && (
+                  <p className="text-[10px] text-[#ec3724] font-bold mt-1.5">{errors.fechaVencimiento}</p>
+                )}
+                <p className="text-[9px] text-slate-400 font-bold mt-1.5 leading-normal">
+                  Obligatorio. Especifica la fecha límite de vigencia de este convenio.
+                </p>
               </div>
             </div>
 

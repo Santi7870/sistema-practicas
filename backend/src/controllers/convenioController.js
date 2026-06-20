@@ -1,5 +1,6 @@
 const { Convenio, Inscripcion, Estudiante, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const { verificarConveniosVencidos } = require('../utils/verificadorExpiracion');
 
 /**
  * @desc    Obtener todos los convenios
@@ -8,9 +9,10 @@ const { Op } = require('sequelize');
  */
 const obtenerConvenios = async (req, res) => {
   try {
+    await verificarConveniosVencidos();
     const { activo, buscar } = req.query;
 
-    const where = {};
+    const where = { eliminado: false };
     if (activo !== undefined) {
       where.activo = activo === 'true';
     }
@@ -45,16 +47,23 @@ const obtenerConvenios = async (req, res) => {
   }
 };
 
-/**
- * @desc    Obtener convenios disponibles (con cupos)
- * @route   GET /api/convenios/disponibles
- * @access  Private
- */
 const obtenerConveniosDisponibles = async (req, res) => {
   try {
+    await verificarConveniosVencidos();
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const hoy = `${year}-${month}-${day}`;
+
     const convenios = await Convenio.findAll({
       where: {
+        eliminado: false,
         activo: true,
+        [Op.or]: [
+          { fechaVencimiento: null },
+          { fechaVencimiento: { [Op.gte]: hoy } }
+        ],
         [Op.and]: [
           {
             cuposOcupados: {
@@ -148,39 +157,49 @@ const crearConvenio = async (req, res) => {
       horario,
       cuposLaboralesTotales,
       cuposComunitariosTotales,
+      fechaVencimiento,
     } = req.body;
 
     // Validaciones
-    if (!nombreEmpresa || !area) {
+    if (!nombreEmpresa || !area || !fechaVencimiento) {
       return res.status(400).json({
         success: false,
-        message: 'Por favor proporciona el nombre de la empresa y el área.',
+        message: 'Por favor proporciona el nombre de la empresa, el área de especialidad y la fecha de vencimiento del convenio.',
       });
     }
 
-    if (contacto && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(contacto)) {
+    if (contacto && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.,\-\(\)\/]+$/.test(contacto)) {
       return res.status(400).json({
         success: false,
-        message: 'El nombre del contacto/representante sólo puede contener letras y espacios.',
+        message: 'El nombre del contacto/representante contiene caracteres no válidos.',
       });
     }
 
-    if (telefono && !/^[0-9]+$/.test(telefono)) {
+    if (telefono && !/^[0-9\s\-\+\/\(\)]+$/.test(telefono)) {
       return res.status(400).json({
         success: false,
-        message: 'El número de teléfono sólo puede contener números.',
+        message: 'El número de teléfono contiene caracteres no válidos.',
       });
     }
 
-    // Verificar si ya existe un convenio con el mismo nombre
+    // Verificar si ya existe un convenio con el mismo nombre y no está eliminado
+    const cleanNombre = nombreEmpresa.trim().toLowerCase();
     const convenioExistente = await Convenio.findOne({
-      where: { nombreEmpresa },
+      where: {
+        eliminado: false,
+        [Op.and]: [
+          sequelize.where(
+            sequelize.fn('LOWER', sequelize.fn('TRIM', sequelize.col('nombre_empresa'))),
+            cleanNombre
+          )
+        ]
+      }
     });
 
     if (convenioExistente) {
       return res.status(400).json({
         success: false,
-        message: 'Ya existe un convenio con esta empresa.',
+        message: 'Ya existe un convenio registrado con esta empresa.',
       });
     }
 
@@ -196,6 +215,7 @@ const crearConvenio = async (req, res) => {
       cuposLaboralesOcupados: 0,
       cuposComunitariosOcupados: 0,
       activo: true,
+      fechaVencimiento: fechaVencimiento || null,
     });
 
     res.status(201).json({
@@ -231,6 +251,7 @@ const actualizarConvenio = async (req, res) => {
       cuposLaboralesTotales,
       cuposComunitariosTotales,
       activo,
+      fechaVencimiento,
     } = req.body;
 
     const convenio = await Convenio.findByPk(id);
@@ -242,18 +263,47 @@ const actualizarConvenio = async (req, res) => {
       });
     }
 
-    if (contacto && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(contacto)) {
+    if (nombreEmpresa === '' || area === '' || fechaVencimiento === '' || fechaVencimiento === null) {
       return res.status(400).json({
         success: false,
-        message: 'El nombre del contacto/representante sólo puede contener letras y espacios.',
+        message: 'El nombre de la empresa, el área de especialidad y la fecha de vencimiento son campos obligatorios y no pueden dejarse vacíos.',
       });
     }
 
-    if (telefono && !/^[0-9]+$/.test(telefono)) {
+    if (contacto && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.,\-\(\)\/]+$/.test(contacto)) {
       return res.status(400).json({
         success: false,
-        message: 'El número de teléfono sólo puede contener números.',
+        message: 'El nombre del contacto/representante contiene caracteres no válidos.',
       });
+    }
+
+    if (telefono && !/^[0-9\s\-\+\/\(\)]+$/.test(telefono)) {
+      return res.status(400).json({
+        success: false,
+        message: 'El número de teléfono contiene caracteres no válidos.',
+      });
+    }
+
+    // Validar unicidad del nombre de empresa de forma insensible a mayúsculas/minúsculas y que no esté eliminado
+    if (nombreEmpresa && nombreEmpresa.trim().toLowerCase() !== convenio.nombreEmpresa.trim().toLowerCase()) {
+      const cleanNombre = nombreEmpresa.trim().toLowerCase();
+      const convenioExistente = await Convenio.findOne({
+        where: {
+          eliminado: false,
+          [Op.and]: [
+            sequelize.where(
+              sequelize.fn('LOWER', sequelize.fn('TRIM', sequelize.col('nombre_empresa'))),
+              cleanNombre
+            )
+          ]
+        }
+      });
+      if (convenioExistente && convenioExistente.id !== convenio.id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ya existe otro convenio registrado con este nombre de empresa.',
+        });
+      }
     }
 
     // Validar que los cupos no se reduzcan por debajo de los ocupados actuales
@@ -282,6 +332,7 @@ const actualizarConvenio = async (req, res) => {
       cuposLaboralesTotales: cuposLaboralesTotales !== undefined ? cuposLaboralesTotales : convenio.cuposLaboralesTotales,
       cuposComunitariosTotales: cuposComunitariosTotales !== undefined ? cuposComunitariosTotales : convenio.cuposComunitariosTotales,
       activo: activo !== undefined ? activo : convenio.activo,
+      fechaVencimiento: fechaVencimiento !== undefined ? fechaVencimiento : convenio.fechaVencimiento,
     });
 
     res.json({
@@ -319,18 +370,29 @@ const eliminarConvenio = async (req, res) => {
 
     // Verificar si hay estudiantes asignados
     if (convenio.cuposOcupados > 0) {
-      return res.status(400).json({
-        success: false,
-        message:
-          'No puedes eliminar este convenio porque tiene estudiantes asignados. Desactívalo en su lugar.',
-      });
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const hoyStr = `${year}-${month}-${day}`;
+
+      const esVencido = convenio.fechaVencimiento && convenio.fechaVencimiento < hoyStr;
+
+      if (!esVencido) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'No puedes eliminar este convenio porque está vigente y tiene estudiantes asignados. Desactívalo en su lugar.',
+        });
+      }
     }
 
-    await convenio.destroy();
+    // Eliminación lógica para no romper FKs ni registros históricos de estudiantes
+    await convenio.update({ eliminado: true, activo: false });
 
     res.json({
       success: true,
-      message: 'Convenio eliminado exitosamente.',
+      message: 'Convenio eliminado lógicamente de forma exitosa.',
     });
   } catch (error) {
     console.error('Error en eliminarConvenio:', error);
@@ -348,6 +410,7 @@ const eliminarConvenio = async (req, res) => {
  * @access  Private/Admin
  */
 const crearConveniosMasivo = async (req, res) => {
+  let transaction;
   try {
     const { convenios } = req.body;
 
@@ -357,6 +420,27 @@ const crearConveniosMasivo = async (req, res) => {
         message: 'Por favor proporciona una lista de convenios válida.',
       });
     }
+
+    const nombresEnPeticion = new Set();
+    const duplicadosInternos = [];
+    for (const data of convenios) {
+      const clean = (data.nombreEmpresa || '').trim().toLowerCase();
+      if (clean) {
+        if (nombresEnPeticion.has(clean)) {
+          duplicadosInternos.push(data.nombreEmpresa.trim());
+        }
+        nombresEnPeticion.add(clean);
+      }
+    }
+
+    if (duplicadosInternos.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `El archivo contiene nombres de empresa duplicados: ${[...new Set(duplicadosInternos)].join(', ')}.`,
+      });
+    }
+
+    transaction = await sequelize.transaction();
 
     const creados = [];
     const errores = [];
@@ -373,42 +457,74 @@ const crearConveniosMasivo = async (req, res) => {
           horario,
           cuposLaboralesTotales,
           cuposComunitariosTotales,
+          fechaVencimiento,
         } = data;
 
-        if (!nombreEmpresa || !area) {
+        if (!nombreEmpresa || !area || !fechaVencimiento) {
           errores.push({
-            convenio: data,
-            error: 'El nombre de la empresa y el área son obligatorios.',
+            id: data.id,
+            nombreEmpresa: nombreEmpresa || '(Sin nombre)',
+            error: 'El nombre de la empresa, el área y la fecha de vencimiento son obligatorios.',
           });
           continue;
         }
 
-        if (contacto && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(contacto)) {
+        if (contacto && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.,\-\(\)\/]+$/.test(contacto)) {
           errores.push({
-            convenio: data,
-            error: 'El nombre del contacto/representante sólo puede contener letras y espacios.',
+            id: data.id,
+            nombreEmpresa,
+            error: 'El nombre del contacto/representante contiene caracteres no válidos.',
           });
           continue;
         }
 
-        if (telefono && !/^[0-9]+$/.test(telefono)) {
+        if (telefono && !/^[0-9\s\-\+\/\(\)]+$/.test(telefono)) {
           errores.push({
-            convenio: data,
-            error: 'El número de teléfono sólo puede contener números.',
+            id: data.id,
+            nombreEmpresa,
+            error: 'El número de teléfono contiene caracteres no válidos.',
           });
           continue;
         }
 
-        // Buscar si ya existe por nombre (insensible a mayúsculas/minúsculas y eliminando espacios en blanco)
+        // Buscar si ya existe por nombre y no está eliminado (insensible a mayúsculas/minúsculas y eliminando espacios en blanco)
         const cleanNombre = nombreEmpresa.trim().toLowerCase();
         const convenioExistente = await Convenio.findOne({
-          where: sequelize.where(
-            sequelize.fn('LOWER', sequelize.fn('TRIM', sequelize.col('nombre_empresa'))),
-            cleanNombre
-          ),
+          where: {
+            eliminado: false,
+            [Op.and]: [
+              sequelize.where(
+                sequelize.fn('LOWER', sequelize.fn('TRIM', sequelize.col('nombre_empresa'))),
+                cleanNombre
+              )
+            ]
+          },
+          transaction,
         });
 
         if (convenioExistente) {
+          const laborTotales = cuposLaboralesTotales !== undefined ? cuposLaboralesTotales : convenioExistente.cuposLaboralesTotales;
+          const comunTotales = cuposComunitariosTotales !== undefined ? cuposComunitariosTotales : convenioExistente.cuposComunitariosTotales;
+
+          // Validar que los cupos no se reduzcan por debajo de los ocupados actuales
+          if (laborTotales < convenioExistente.cuposLaboralesOcupados) {
+            errores.push({
+              id: data.id,
+              nombreEmpresa,
+              error: `No puedes reducir los cupos laborales a ${laborTotales} porque ya hay ${convenioExistente.cuposLaboralesOcupados} cupos ocupados.`,
+            });
+            continue;
+          }
+
+          if (comunTotales < convenioExistente.cuposComunitariosOcupados) {
+            errores.push({
+              id: data.id,
+              nombreEmpresa,
+              error: `No puedes reducir los cupos comunitarios a ${comunTotales} porque ya hay ${convenioExistente.cuposComunitariosOcupados} cupos ocupados.`,
+            });
+            continue;
+          }
+
           // Actualizar campos
           await convenioExistente.update({
             area: area || convenioExistente.area,
@@ -416,9 +532,10 @@ const crearConveniosMasivo = async (req, res) => {
             telefono: telefono !== undefined ? telefono : convenioExistente.telefono,
             actividades: actividades !== undefined ? actividades : convenioExistente.actividades,
             horario: horario !== undefined ? horario : convenioExistente.horario,
-            cuposLaboralesTotales: cuposLaboralesTotales !== undefined ? cuposLaboralesTotales : convenioExistente.cuposLaboralesTotales,
-            cuposComunitariosTotales: cuposComunitariosTotales !== undefined ? cuposComunitariosTotales : convenioExistente.cuposComunitariosTotales,
-          });
+            cuposLaboralesTotales: laborTotales,
+            cuposComunitariosTotales: comunTotales,
+            fechaVencimiento: fechaVencimiento !== undefined ? fechaVencimiento : convenioExistente.fechaVencimiento,
+          }, { transaction });
           creados.push(convenioExistente);
         } else {
           // Crear nuevo
@@ -434,27 +551,45 @@ const crearConveniosMasivo = async (req, res) => {
             cuposLaboralesOcupados: 0,
             cuposComunitariosOcupados: 0,
             activo: true,
-          });
+            fechaVencimiento,
+          }, { transaction });
           creados.push(nuevo);
         }
       } catch (err) {
         errores.push({
-          convenio: data,
+          id: data.id,
+          nombreEmpresa: data.nombreEmpresa || '(Sin nombre)',
           error: err.message,
         });
       }
     }
 
+    if (errores.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Se encontraron errores de validación en la lista de convenios.',
+        errores,
+      });
+    }
+
+    await transaction.commit();
+
     res.status(200).json({
       success: true,
-      message: `Proceso masivo completado. Creados/Actualizados: ${creados.length}, Errores: ${errores.length}`,
+      message: `¡Carga masiva completada con éxito! Creados/Actualizados: ${creados.length} convenios.`,
       data: {
         cantidadCreados: creados.length,
-        cantidadErrores: errores.length,
-        errores,
       },
     });
   } catch (error) {
+    if (transaction && !transaction.finished) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackErr) {
+        console.error('Error al realizar rollback en crearConveniosMasivo:', rollbackErr);
+      }
+    }
     console.error('Error en crearConveniosMasivo:', error);
     res.status(500).json({
       success: false,

@@ -23,7 +23,7 @@ const Documento = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       validate: {
-        isIn: [[2, 3, 4]],
+        isIn: [[1, 2, 3, 4]],
       },
     },
     tipoDocumento: {
@@ -37,6 +37,8 @@ const Documento = sequelize.define(
             'Anexo A',
             'Respuesta de la empresa',
             'Certificado de practicas realizadas',
+            'Requisito 1',
+            'Requisito 2',
           ],
         ],
       },

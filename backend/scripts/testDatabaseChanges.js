@@ -27,6 +27,7 @@ async function testDatabaseChanges() {
       horario: 'Jornada Parcial (08:00 - 12:00)',
       cuposLaboralesTotales: 1,
       cuposComunitariosTotales: 2,
+      fechaVencimiento: '2026-12-31',
     });
 
     console.log(`✅ Convenio creado exitosamente: "${convenio.nombreEmpresa}"`);

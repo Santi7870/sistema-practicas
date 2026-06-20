@@ -82,13 +82,24 @@ const Inscripcion = sequelize.define(
       allowNull: true,
       field: 'fecha_aprobacion',
     },
+    fechaLimiteDocumentos: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'fecha_limite_documentos',
+    },
+    estadoDocumentosRequisitos: {
+      type: DataTypes.ENUM('pendiente_entrega', 'en_revision', 'rechazado', 'aprobado'),
+      allowNull: false,
+      defaultValue: 'pendiente_entrega',
+      field: 'estado_documentos_requisitos',
+    },
   },
   {
     tableName: 'inscripciones',
     timestamps: true,
     underscored: true,
     hooks: {
-      afterCreate: async (inscripcion) => {
+      afterCreate: async (inscripcion, options) => {
         if (!inscripcion.activa) return;
         const Ciclo = sequelize.models.Ciclo;
         if (!Ciclo) return;
@@ -96,10 +107,11 @@ const Inscripcion = sequelize.define(
           await Ciclo.findOrCreate({
             where: { inscripcionId: inscripcion.id, numeroCiclo },
             defaults: { promedioCiclo: null },
+            transaction: options.transaction,
           });
         }
       },
-      afterUpdate: async (inscripcion) => {
+      afterUpdate: async (inscripcion, options) => {
         if (!inscripcion.activa) return;
         const Ciclo = sequelize.models.Ciclo;
         if (!Ciclo) return;
@@ -107,6 +119,7 @@ const Inscripcion = sequelize.define(
           await Ciclo.findOrCreate({
             where: { inscripcionId: inscripcion.id, numeroCiclo },
             defaults: { promedioCiclo: null },
+            transaction: options.transaction,
           });
         }
       },

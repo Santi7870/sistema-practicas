@@ -10,20 +10,20 @@ const Convenio = sequelize.define(
       autoIncrement: true,
     },
     nombreEmpresa: {
-      type: DataTypes.STRING(200),
+      type: DataTypes.STRING(500),
       allowNull: false,
       field: 'nombre_empresa',
     },
     area: {
-      type: DataTypes.STRING(200),
+      type: DataTypes.STRING(300),
       allowNull: false,
     },
     contacto: {
-      type: DataTypes.STRING(200),
+      type: DataTypes.STRING(300),
       allowNull: true,
     },
     telefono: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.STRING(100),
       allowNull: true,
     },
     actividades: {
@@ -31,7 +31,7 @@ const Convenio = sequelize.define(
       allowNull: true,
     },
     horario: {
-      type: DataTypes.STRING(200),
+      type: DataTypes.STRING(300),
       allowNull: true,
     },
     cuposLaboralesTotales: {
@@ -92,6 +92,27 @@ const Convenio = sequelize.define(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+    },
+    fechaVencimiento: {
+      type: DataTypes.DATEONLY,
+      allowNull: false,
+      field: 'fecha_vencimiento',
+    },
+    fechaLimiteRequisitos: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+      field: 'fecha_limite_requisitos',
+    },
+    eliminado: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    notificadoVencimiento: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'notificado_vencimiento',
     },
   },
   {

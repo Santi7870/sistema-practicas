@@ -19,6 +19,9 @@ import {
   FiChevronRight,
   FiInfo,
   FiEye,
+  FiUpload,
+  FiDownload,
+  FiRefreshCw,
 } from 'react-icons/fi';
 
 const Dashboard = () => {
@@ -122,7 +125,7 @@ const EstadoBar = ({ label, valor, total, color }) => {
 
 // Dashboard del Administrador
 const DashboardAdmin = ({ estadisticas }) => {
-  const { registrosPendientes, estudiantes, convenios } = estadisticas;
+  const { registrosPendientes, estudiantes, convenios, postulacionesPendientes } = estadisticas;
 
   const tarjetas = [
     {
@@ -131,7 +134,15 @@ const DashboardAdmin = ({ estadisticas }) => {
       icon: FiClock,
       color: 'bg-rose-50 border-rose-200 text-[#ec3724]',
       link: '/admin/registros-pendientes',
-      descripcion: 'Requieren aprobación de cuenta',
+      descripcion: 'Aprobación de cuenta',
+    },
+    {
+      titulo: 'Por Revisar (F1)',
+      valor: postulacionesPendientes || 0,
+      icon: FiFileText,
+      color: 'bg-amber-50 border-amber-250 text-amber-700',
+      link: '/admin/estudiantes?filtro=revision',
+      descripcion: 'Requisitos Fase 1',
     },
     {
       titulo: 'Total Estudiantes',
@@ -155,14 +166,14 @@ const DashboardAdmin = ({ estadisticas }) => {
       icon: FiCheckCircle,
       color: 'bg-emerald-50 border-emerald-200 text-emerald-700',
       link: '/admin/convenios',
-      descripcion: 'Vacantes totales de convenios',
+      descripcion: 'Vacantes de convenios',
     },
   ];
 
   return (
     <>
       {/* Tarjetas de estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {tarjetas.map((tarjeta, index) => (
           <Link
             key={index}
@@ -254,6 +265,25 @@ const DashboardAdmin = ({ estadisticas }) => {
             </Link>
 
             <Link
+              to="/admin/estudiantes?filtro=revision"
+              className="flex items-center justify-between p-4 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all shadow-sm relative overflow-hidden group"
+            >
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
+              <div className="flex items-center gap-3 pl-1">
+                <FiClock className="h-5 w-5 text-amber-500" />
+                <div>
+                  <p className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                    Revisar Postulaciones (F1)
+                  </p>
+                  <p className="text-[10px] font-semibold text-slate-550">
+                    {postulacionesPendientes || 0} postulaciones con requisitos pendientes de validación
+                  </p>
+                </div>
+              </div>
+              <FiChevronRight className="h-5 w-5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+
+            <Link
               to="/admin/estudiantes"
               className="flex items-center justify-between p-4 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all shadow-sm relative overflow-hidden group"
             >
@@ -269,6 +299,7 @@ const DashboardAdmin = ({ estadisticas }) => {
               </div>
               <FiChevronRight className="h-5 w-5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
             </Link>
+
 
             <Link
               to="/admin/convenios"
@@ -324,6 +355,352 @@ const DashboardAdmin = ({ estadisticas }) => {
         </div>
       </div>
     </>
+  );
+};
+
+// Componente para Subir Requisitos de Fase 1
+const RequirementsUploadCard = ({ inscripcion, onReload }) => {
+  const [fileReq1, setFileReq1] = useState(null);
+  const [fileReq2, setFileReq2] = useState(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
+  const [mostrarConfirmarCancelacion, setMostrarConfirmarCancelacion] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(null);
+
+  useEffect(() => {
+    if (!inscripcion.fechaLimiteDocumentos) return;
+    
+    const calculate = () => {
+      const difference = +new Date(inscripcion.fechaLimiteDocumentos) - +new Date();
+      if (difference <= 0) {
+        setTimeLeft({ expired: true, text: 'Expirado' });
+        return;
+      }
+      
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((difference / 1000 / 60) % 60);
+      const seconds = Math.floor((difference / 1000) % 60);
+      
+      setTimeLeft({
+        expired: false,
+        days,
+        hours,
+        minutes,
+        seconds,
+        text: `${days}d ${hours}h ${minutes}m ${seconds}s`
+      });
+    };
+    
+    calculate();
+    const interval = setInterval(calculate, 1000);
+    return () => clearInterval(interval);
+  }, [inscripcion.fechaLimiteDocumentos]);
+
+  const documentos = inscripcion.documentos || [];
+  const req1 = documentos.find(d => d.fase === 1 && d.tipoDocumento === 'Requisito 1');
+  const req2 = documentos.find(d => d.fase === 1 && d.tipoDocumento === 'Requisito 2');
+
+  const handleFileChange = (e, setFile) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const limit = 20 * 1024 * 1024;
+    if (file.size > limit) {
+      setMensaje({ tipo: 'error', texto: 'El archivo es demasiado grande. Máximo 20MB.' });
+      e.target.value = null;
+      return;
+    }
+
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    const allowed = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+    if (!allowed.includes(ext)) {
+      setMensaje({ tipo: 'error', texto: 'Formato no permitido. Solo se aceptan PDF, DOC, DOCX, XLS, XLSX.' });
+      e.target.value = null;
+      return;
+    }
+
+    setFile(file);
+    setMensaje({ tipo: '', texto: '' });
+  };
+
+  const handleSubir = async (e) => {
+    e.preventDefault();
+    if (!fileReq1 && !fileReq2) {
+      setMensaje({ tipo: 'error', texto: 'Por favor selecciona al menos un archivo para subir.' });
+      return;
+    }
+
+    setSubiendo(true);
+    setMensaje({ tipo: '', texto: '' });
+    try {
+      const formData = new FormData();
+      if (fileReq1) formData.append('requisito1', fileReq1);
+      if (fileReq2) formData.append('requisito2', fileReq2);
+
+      await api.post('/inscripciones/requisitos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      setMensaje({ tipo: 'success', texto: '¡Requisitos subidos y enviados a revisión con éxito!' });
+      setFileReq1(null);
+      setFileReq2(null);
+      setTimeout(() => {
+        if (onReload) onReload();
+      }, 1500);
+    } catch (error) {
+      setMensaje({
+        tipo: 'error',
+        texto: error.message || 'Error al subir los requisitos'
+      });
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  const handleCancelarPostulacion = async () => {
+    setCancelando(true);
+    setMensaje({ tipo: '', texto: '' });
+    try {
+      await api.delete('/inscripciones/cancelar-postulacion');
+      setMensaje({ tipo: 'success', texto: 'Postulación cancelada con éxito.' });
+      setMostrarConfirmarCancelacion(false);
+      setTimeout(() => {
+        if (onReload) onReload();
+      }, 1500);
+    } catch (error) {
+      setMensaje({
+        tipo: 'error',
+        texto: error.message || 'Error al cancelar la postulación.'
+      });
+      setMostrarConfirmarCancelacion(false);
+    } finally {
+      setCancelando(false);
+    }
+  };
+
+  const descargarDoc = async (docId, nombre) => {
+    try {
+      const response = await api.get(`/documentos/${docId}/descargar`, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], { type: response.headers['content-type'] });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', nombre);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setMensaje({ tipo: 'error', texto: 'No se pudo descargar el archivo.' });
+    }
+  };
+
+  const renderFilaRequisito = (numero, docExistente, fileState, setFileState) => {
+    const isRechazado = docExistente?.estado === 'rechazado';
+    const isAprobado = docExistente?.estado === 'aprobado';
+
+    return (
+      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black uppercase text-slate-700 tracking-wider">
+            Requisito {numero}
+          </span>
+          {docExistente && (
+            <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+              isAprobado ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+              isRechazado ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+              'bg-amber-100 text-amber-800 border border-amber-200'
+            }`}>
+              {isAprobado ? 'Aprobado' : isRechazado ? 'Rechazado' : 'En Revisión'}
+            </span>
+          )}
+        </div>
+
+        {docExistente ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3 bg-white p-2.5 rounded-lg border border-slate-200">
+              <div className="flex items-center gap-2 min-w-0">
+                <FiFileText className="h-4.5 w-4.5 text-rose-600 flex-shrink-0" />
+                <span className="text-xs font-bold text-slate-800 truncate">
+                  {docExistente.nombreArchivo}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => descargarDoc(docExistente.id, docExistente.nombreArchivo)}
+                className="text-slate-500 hover:text-slate-800 p-1 hover:bg-slate-100 rounded-md transition-colors"
+                title="Descargar documento"
+              >
+                <FiDownload className="h-4 w-4" />
+              </button>
+            </div>
+
+            {isRechazado && (
+              <div className="p-3 bg-rose-50 border border-rose-150 text-rose-800 rounded-lg text-[10px] leading-relaxed font-semibold">
+                <strong className="font-black uppercase tracking-wider block mb-0.5">Observación del administrador:</strong>
+                {docExistente.comentarioAdmin || 'No especificado'}
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider italic">No se ha subido ningún documento</p>
+        )}
+
+        {(!docExistente || isRechazado) && !timeLeft?.expired && inscripcion.estadoDocumentosRequisitos !== 'en_revision' && (
+          <div className="space-y-1.5 pt-1">
+            <label className="block text-[9px] font-black uppercase text-slate-450 tracking-wider">
+              {docExistente ? 'Reemplazar/Corregir archivo' : 'Seleccionar archivo'}
+            </label>
+            <input
+              type="file"
+              onChange={(e) => handleFileChange(e, setFileState)}
+              accept=".pdf,.doc,.docx,.xls,.xlsx"
+              className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#ec3724]"
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const totalSubidos = (req1 ? 1 : 0) + (req2 ? 1 : 0);
+  const estaEnRevision = inscripcion.estadoDocumentosRequisitos === 'en_revision';
+
+  return (
+    <div className="bg-white rounded-xl p-6 md:p-8 shadow-sm border border-slate-200 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+        <div>
+          <span className="inline-flex px-2 py-0.5 bg-rose-50 text-[#ec3724] border border-rose-100/50 rounded-md text-[9px] font-black uppercase tracking-wider">
+            Fase 1: Envío de Requisitos Obligatorios
+          </span>
+          <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide mt-1">
+            Documentos de Postulación
+          </h3>
+          <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
+            Sube tu Requisito 1 y Requisito 2 para activar tu cupo.
+          </p>
+        </div>
+
+        {timeLeft && (
+          <div className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg border shadow-sm ${
+            timeLeft.expired ? 'bg-rose-50 border-rose-200 text-[#ec3724]' :
+            timeLeft.days === 0 && timeLeft.hours < 12 ? 'bg-amber-50 border-amber-250 text-amber-800' :
+            'bg-slate-50 border-slate-250 text-slate-700'
+          }`}>
+            <FiClock className="h-4.5 w-4.5 flex-shrink-0 animate-pulse" />
+            <div className="text-right">
+              <span className="block text-[8px] font-black uppercase tracking-wider text-slate-400">Plazo Restante</span>
+              <strong className="text-xs font-black tracking-tight">{timeLeft.text}</strong>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {mensaje.texto && (
+        <div className={`p-3.5 rounded-lg text-xs font-bold flex items-center gap-2.5 border ${
+          mensaje.tipo === 'success' ? 'bg-emerald-50 border-emerald-250 text-emerald-800' : 'bg-rose-50 border-rose-250 text-[#ec3724]'
+        }`}>
+          <FiAlertCircle className="h-4.5 w-4.5 flex-shrink-0" />
+          <span>{mensaje.texto}</span>
+        </div>
+      )}
+
+      {timeLeft?.expired && !estaEnRevision && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-3 text-rose-900">
+          <FiAlertCircle className="h-5 w-5 text-[#ec3724] flex-shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <p className="font-black uppercase tracking-wider">¡Plazo Expirado!</p>
+            <p className="font-semibold text-rose-700/90 mt-1 leading-relaxed">
+              El tiempo para entregar tus requisitos ha expirado. Tu cupo sigue reservado temporalmente, pero debes cancelar la postulación para liberar la vacante o solicitar una extensión al administrador del sistema.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubir} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderFilaRequisito(1, req1, fileReq1, setFileReq1)}
+          {renderFilaRequisito(2, req2, fileReq2, setFileReq2)}
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-slate-100">
+          <div className="text-xs font-bold text-slate-450 uppercase tracking-wider">
+            Progreso: {totalSubidos} / 2 documentos subidos
+          </div>
+          
+          <div className="flex flex-wrap gap-3">
+            {inscripcion.estadoInscripcion === 'pendiente' && (
+              <button
+                type="button"
+                onClick={() => setMostrarConfirmarCancelacion(true)}
+                disabled={cancelando || subiendo}
+                className="px-4 py-2.5 border border-slate-250 hover:bg-slate-50 text-slate-650 hover:text-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                {cancelando ? 'Cancelando...' : 'Cancelar Postulación'}
+              </button>
+            )}
+
+            {!timeLeft?.expired && !estaEnRevision && (fileReq1 || fileReq2) && (
+              <button
+                type="submit"
+                disabled={subiendo || cancelando}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#ec3724] hover:bg-[#d32010] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+              >
+                {subiendo ? (
+                  <>
+                    <FiRefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiUpload className="h-3.5 w-3.5" />
+                    <span>Enviar Requisitos</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </form>
+
+      {mostrarConfirmarCancelacion && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-md w-full p-6 animate-scaleIn">
+            <div className="flex items-center gap-3 mb-4 text-amber-600">
+              <FiAlertCircle className="h-6 w-6 flex-shrink-0" />
+              <h3 className="text-sm font-black uppercase tracking-wider">Cancelar Postulación</h3>
+            </div>
+            <p className="text-xs font-semibold text-slate-500 leading-relaxed mb-6">
+              ¿Estás seguro de cancelar tu postulación al convenio <strong className="text-slate-800">{inscripcion.convenio?.nombreEmpresa}</strong>?
+              <br /><br />
+              Esta acción <strong>liberará el cupo</strong> reservado para otros estudiantes y <strong>eliminará físicamente</strong> cualquier documento de requisito que hayas subido.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setMostrarConfirmarCancelacion(false)}
+                disabled={cancelando}
+                className="px-4 py-2 border border-slate-200 rounded-lg text-[10px] font-black text-slate-500 hover:bg-slate-50 uppercase tracking-widest transition duration-200"
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelarPostulacion}
+                disabled={cancelando}
+                className="px-4 py-2 bg-[#ec3724] text-white hover:bg-[#d32010] rounded-lg text-[10px] font-black uppercase tracking-widest transition duration-200 shadow-sm active:scale-[0.98]"
+              >
+                {cancelando ? 'Cancelando...' : 'Sí, Cancelar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -753,6 +1130,14 @@ const DashboardEstudiante = ({ data, onReload }) => {
             </div>
           </div>
 
+          {/* Subida de Requisitos (Fase 1) - Solo si el proceso está en 'asignado' */}
+          {estudiante.estadoProceso === 'asignado' && estudiante.inscripcion && (
+            <RequirementsUploadCard
+              inscripcion={estudiante.inscripcion}
+              onReload={onReload}
+            />
+          )}
+
           {/* Detalles de Acreditación (Convenio y Tutor) */}
           {estudiante.inscripcion ? (
             <div className="bg-white rounded-xl p-6 md:p-8 shadow-sm border border-slate-200">
@@ -937,6 +1322,25 @@ const DashboardEstudiante = ({ data, onReload }) => {
                       <div>
                         <p className="text-xs font-black text-slate-800 group-hover:text-[#ec3724] transition-colors">Notificaciones</p>
                         <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Avisos e incidencias</p>
+                      </div>
+                    </div>
+                    <FiArrowRight className="h-4 w-4 text-slate-400 group-hover:text-slate-650 transition-colors" />
+                  </div>
+                </Link>
+
+                {/* Formatos Oficiales */}
+                <Link
+                  to="/formatos"
+                  className="group block p-3.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-8 w-8 rounded-lg bg-slate-100 border border-slate-250 text-slate-600 flex items-center justify-center transition-transform group-hover:scale-105">
+                        <FiDownload className="h-4.5 w-4.5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-slate-800 group-hover:text-[#ec3724] transition-colors">Formatos Oficiales</p>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Descarga de plantillas oficiales</p>
                       </div>
                     </div>
                     <FiArrowRight className="h-4 w-4 text-slate-400 group-hover:text-slate-650 transition-colors" />

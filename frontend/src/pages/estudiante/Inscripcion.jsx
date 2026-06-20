@@ -168,7 +168,7 @@ const Inscripcion = () => {
 
       setMensaje({
         tipo: 'success',
-        texto: '¡Inscripción aprobada automáticamente! Redirigiendo al dashboard...',
+        texto: '¡Cupo reservado con éxito! Redirigiendo al dashboard para subir tus documentos de requisitos...',
       });
 
       // Redirigir al dashboard después de 2 segundos
@@ -178,7 +178,7 @@ const Inscripcion = () => {
     } catch (error) {
       setMensaje({
         tipo: 'error',
-        texto: error.response?.data?.message || error.message || 'Error al enviar inscripción',
+        texto: error.message || 'Error al registrar inscripción',
       });
       setProcesando(false);
     }
@@ -560,12 +560,12 @@ const Inscripcion = () => {
                   ) : (
                     <>
                       <FiCheckCircle className="h-4.5 w-4.5" />
-                      <span>Confirmar Inscripción</span>
+                      <span>Registrar Inscripción</span>
                     </>
                   )}
                 </button>
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider text-center">
-                  * Sujeto a revisión y aprobación del tutor
+                  * Sujeto a la entrega de requisitos y aprobación del administrador
                 </p>
               </div>
             </div>
@@ -578,12 +578,12 @@ const Inscripcion = () => {
             <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-md w-full p-6 animate-scaleIn">
               <div className="flex items-center gap-3 mb-4 text-amber-600">
                 <FiAlertCircle className="h-6 w-6 flex-shrink-0" />
-                <h3 className="text-sm font-black uppercase tracking-wider">Confirmar Inscripción</h3>
+                <h3 className="text-sm font-black uppercase tracking-wider">Registrar Inscripción</h3>
               </div>
-              <p className="text-xs font-semibold text-slate-655 text-slate-500 leading-relaxed mb-6">
-                ¿Estás seguro de inscribirte a la modalidad de práctica <strong className="text-slate-800 uppercase">{tipoPracticaSeleccionado}</strong> en el convenio <strong className="text-slate-800">{convenioSeleccionado?.nombreEmpresa}</strong>?
+              <p className="text-xs font-semibold text-slate-500 leading-relaxed mb-6">
+                ¿Estás seguro de registrar tu cupo en la modalidad de práctica <strong className="text-slate-800 uppercase">{tipoPracticaSeleccionado}</strong> en el convenio <strong className="text-slate-800">{convenioSeleccionado?.nombreEmpresa}</strong>?
                 <br /><br />
-                Esta postulación iniciará de manera formal tu vinculación académica en el periodo vigente.
+                Al registrarte, se reservará tu vacante y tendrás un plazo para subir los 2 documentos de requisitos necesarios para que el administrador apruebe tu inscripción.
               </p>
               <div className="flex justify-end gap-3 pt-2">
                 <button
@@ -599,7 +599,7 @@ const Inscripcion = () => {
                   disabled={procesando}
                   className="px-4 py-2 bg-[#ec3724] text-white hover:bg-[#d32010] rounded-lg text-[10px] font-black uppercase tracking-widest transition duration-200 shadow-sm active:scale-[0.98]"
                 >
-                  {procesando ? 'Procesando...' : 'Sí, Inscribirme'}
+                  {procesando ? 'Procesando...' : 'Sí, Registrar'}
                 </button>
               </div>
             </div>

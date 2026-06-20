@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import api from '../../services/api';
 import {
@@ -27,6 +27,7 @@ const ListaEstudiantes = () => {
   const [tabActiva, setTabActiva] = useState('laborales'); // 'laborales', 'comunales', 'sin_matricula'
   const [paraleloFiltro, setParaleloFiltro] = useState('todos');
   const [cargando, setCargando] = useState(true);
+  const location = useLocation();
 
   // Estados para el proceso de Auto-Asignación
   const [asignando, setAsignando] = useState(false);
@@ -37,14 +38,20 @@ const ListaEstudiantes = () => {
   const [docentes, setDocentes] = useState([]);
   const [paralelos, setParalelos] = useState([]);
   const [monitorAbierto, setMonitorAbierto] = useState(false);
-  const [busquedaTutor, setBusquedaTutor] = useState('');
-  const [asignandoEstudianteId, setAsignandoEstudianteId] = useState(null);
 
   useEffect(() => {
     cargarEstudiantes();
     cargarDocentes();
     cargarParalelos();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const filtroParam = params.get('filtro');
+    if (filtroParam === 'revision') {
+      setEstadoFiltro('revision_f1');
+    }
+  }, [location.search]);
 
   useEffect(() => {
     filtrarEstudiantes();
@@ -79,25 +86,6 @@ const ListaEstudiantes = () => {
       setCargando(false);
     }
   };
-
-  const asignarParaleloRapido = async (estudianteId, inscripcionId, paraleloId) => {
-    setAsignandoEstudianteId(estudianteId);
-    setErrorAsignacion('');
-    try {
-      await api.put('/admin/paralelos/mover-estudiante', {
-        inscripcionId,
-        paraleloId: paraleloId ? parseInt(paraleloId) : null
-      });
-      // Recargar estudiantes, docentes y paralelos para refrescar cargas e interfaz
-      await Promise.all([cargarEstudiantes(), cargarDocentes(), cargarParalelos()]);
-    } catch (error) {
-      console.error('Error al asignar paralelo de forma rápida:', error);
-      setErrorAsignacion(error.response?.data?.message || 'Error al asignar el paralelo.');
-    } finally {
-      setAsignandoEstudianteId(null);
-    }
-  };
-
   const filtrarEstudiantes = () => {
     let filtrados = [...estudiantes];
 
@@ -118,9 +106,15 @@ const ListaEstudiantes = () => {
 
     // 2. Filtrar por estado de proceso (si es distinto a 'todos')
     if (estadoFiltro !== 'todos') {
-      filtrados = filtrados.filter(
-        (est) => est.estadoProceso === estadoFiltro
-      );
+      if (estadoFiltro === 'revision_f1') {
+        filtrados = filtrados.filter(
+          (est) => est.estadoProceso === 'asignado' && est.inscripcion?.estadoDocumentosRequisitos === 'en_revision'
+        );
+      } else {
+        filtrados = filtrados.filter(
+          (est) => est.estadoProceso === estadoFiltro
+        );
+      }
     }
 
     // 2.5 Filtrar por paralelo (si es distinto a 'todos')
@@ -299,6 +293,7 @@ const ListaEstudiantes = () => {
               <option value="todos">Todos los Estados (Fases)</option>
               <option value="sin_asignar">Sin Inscribir</option>
               <option value="asignado">Asignado (Fase 1)</option>
+              <option value="revision_f1">Pendientes de Revisión (F1)</option>
               <option value="pendiente_inicio">Pendiente de Inicio (Fase 2)</option>
               <option value="en_proceso">En Proceso (Fase 3-4)</option>
               <option value="finalizado">Finalizado</option>
@@ -451,9 +446,30 @@ const ListaEstudiantes = () => {
                           </div>
                         </td>
                         <td className="px-3.5 py-2.5">
-                          <span className={`inline-flex px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${badge.color}`}>
-                            {badge.texto}
-                          </span>
+                          <div className="flex flex-col gap-1 items-start">
+                            <span className={`inline-flex px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${badge.color}`}>
+                              {badge.texto}
+                            </span>
+                            {estudiante.estadoProceso === 'asignado' && estudiante.inscripcion && (
+                              (() => {
+                                const reqState = estudiante.inscripcion.estadoDocumentosRequisitos;
+                                if (reqState === 'en_revision') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-55 bg-blue-50 text-blue-700 border border-blue-150 rounded text-[7px] font-black uppercase tracking-widest animate-pulse">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                                      Por Revisar
+                                    </span>
+                                  );
+                                } else {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 text-slate-500 border border-slate-200 rounded text-[7px] font-black uppercase tracking-widest">
+                                      Pendiente Entrega
+                                    </span>
+                                  );
+                                }
+                              })()
+                            )}
+                          </div>
                         </td>
                         <td className="px-3.5 py-2.5">
                           {estudiante.inscripcion?.convenio ? (
@@ -474,35 +490,14 @@ const ListaEstudiantes = () => {
                         </td>
                         <td className="px-3.5 py-2.5">
                           {estudiante.inscripcion && estudiante.inscripcion.activa ? (
-                            <div className="flex items-center">
-                              {asignandoEstudianteId === estudiante.id ? (
-                                <div className="flex items-center gap-1 text-[9px] text-slate-450 font-black uppercase py-1">
-                                  <svg className="animate-spin h-3 w-3 text-[#ec3724]" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                  </svg>
-                                  <span>Guardando...</span>
-                                </div>
-                              ) : (
-                                <select
-                                  value={estudiante.inscripcion.paraleloId || ''}
-                                  onChange={(e) => asignarParaleloRapido(estudiante.id, estudiante.inscripcion.id, e.target.value)}
-                                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[9px] font-black uppercase tracking-wider focus:outline-none focus:ring-1 focus:ring-[#ec3724] cursor-pointer w-[180px] shadow-sm truncate"
-                                >
-                                  <option value="" className="text-slate-500 bg-white font-black">
-                                    Sin Paralelo
-                                  </option>
-                                  {paralelos
-                                    .filter(p => p.tipoPractica === estudiante.inscripcion.tipoPractica)
-                                    .map(p => (
-                                      <option key={p.id} value={p.id} className="text-slate-800 bg-white font-semibold">
-                                        Paralelo {p.nombre} ({p.docente?.nombres?.split(' ')[0] || 'Sin Tutor'})
-                                      </option>
-                                    ))
-                                  }
-                                </select>
-                              )}
-                            </div>
+                            (() => {
+                              const par = paralelos.find(p => p.id === estudiante.inscripcion.paraleloId);
+                              return (
+                                <span className="text-slate-800 font-bold">
+                                  {par ? `Paralelo ${par.nombre} (${par.docente?.nombres?.split(' ')[0] || 'Sin Tutor'})` : 'Sin Paralelo'}
+                                </span>
+                              );
+                            })()
                           ) : (
                             <span className="inline-flex px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200/60">
                               Requiere Matrícula

@@ -55,11 +55,11 @@ const Navbar = () => {
           {/* Logo y título */}
           <div className="flex items-center">
             <div className="flex items-center space-x-3">
-              <Link to="/dashboard" className="flex items-center" title="Ir al Dashboard">
+              <Link to="/dashboard" className="flex items-center flex-shrink-0" title="Ir al Dashboard">
                 <img
                   src="/espochlogo.png"
                   alt="Logo ESPOCH"
-                  className="h-10 w-auto object-contain hover:scale-105 transition-transform"
+                  className="h-10 w-auto object-contain flex-shrink-0 hover:scale-105 transition-transform"
                 />
               </Link>
               <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
@@ -70,14 +70,33 @@ const Navbar = () => {
                 >
                   <FiHome className="h-5 w-5" />
                 </Link>
-                <div>
-                  <h1 className="text-sm font-extrabold text-slate-900 leading-none">
+                <div className="whitespace-nowrap">
+                  <h1 className="text-sm font-extrabold text-slate-900 leading-none whitespace-nowrap">
                     Sistema de Prácticas
                   </h1>
-                  <span className="text-[10px] font-bold text-slate-400 block mt-0.5">ESPOCH - Software</span>
+                  <span className="text-[10px] font-bold text-slate-400 block mt-1 whitespace-nowrap">
+                    ESPOCH - Software
+                  </span>
                 </div>
               </div>
             </div>
+            {usuario?.rol === 'admin' && (
+              <div className="hidden md:flex items-center space-x-1 border-l border-slate-200 pl-4 ml-4 h-8 self-center">
+                <NavLink to="/dashboard" className={navLinkClass}>Inicio</NavLink>
+                <NavLink to="/admin/estudiantes" className={navLinkClass}>Estudiantes</NavLink>
+                <NavLink to="/admin/convenios" className={navLinkClass}>Convenios</NavLink>
+                <NavLink to="/admin/docentes" className={navLinkClass}>Docentes</NavLink>
+                <NavLink to="/admin/paralelos" className={navLinkClass}>Paralelos</NavLink>
+              </div>
+            )}
+
+            {usuario?.rol === 'estudiante' && (
+              <div className="hidden md:flex items-center space-x-1 border-l border-slate-200 pl-4 ml-4 h-8 self-center">
+                <NavLink to="/dashboard" className={navLinkClass}>Inicio</NavLink>
+                <NavLink to="/formatos" className={navLinkClass}>Formatos Oficiales</NavLink>
+              </div>
+            )}
+
             {usuario?.rol === 'docente' && (
               <div className="hidden md:flex items-center space-x-1 border-l border-slate-200 pl-4 ml-4 h-8 self-center">
                 <NavLink
@@ -106,10 +125,10 @@ const Navbar = () => {
                   Entregas por Calificar
                 </NavLink>
                 <NavLink
-                  to="/docente/estudiantes"
+                  to="/formatos"
                   className={navLinkClass}
                 >
-                  Libro de Calificaciones
+                  Formatos Oficiales
                 </NavLink>
               </div>
             )}
@@ -185,6 +204,23 @@ const Navbar = () => {
                 </p>
               </div>
 
+              {usuario?.rol === 'admin' && (
+                <div className="space-y-1 border-b border-slate-100 pb-3">
+                  <Link to="/dashboard" className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all" onClick={() => setMenuAbierto(false)}>Inicio</Link>
+                  <Link to="/admin/estudiantes" className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all" onClick={() => setMenuAbierto(false)}>Estudiantes</Link>
+                  <Link to="/admin/convenios" className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all" onClick={() => setMenuAbierto(false)}>Convenios</Link>
+                  <Link to="/admin/docentes" className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all" onClick={() => setMenuAbierto(false)}>Docentes</Link>
+                  <Link to="/admin/paralelos" className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all" onClick={() => setMenuAbierto(false)}>Paralelos</Link>
+                </div>
+              )}
+
+              {usuario?.rol === 'estudiante' && (
+                <div className="space-y-1 border-b border-slate-100 pb-3">
+                  <Link to="/dashboard" className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all" onClick={() => setMenuAbierto(false)}>Inicio</Link>
+                  <Link to="/formatos" className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all" onClick={() => setMenuAbierto(false)}>Formatos Oficiales</Link>
+                </div>
+              )}
+
               {usuario?.rol === 'docente' && (
                 <div className="space-y-1 border-b border-slate-100 pb-3">
                   <Link
@@ -216,11 +252,11 @@ const Navbar = () => {
                     Entregas por Calificar
                   </Link>
                   <Link
-                    to="/docente/estudiantes"
+                    to="/formatos"
                     className="flex items-center px-4 py-2 text-sm font-bold text-slate-700 hover:text-[#ec3724] hover:bg-slate-50 rounded-lg transition-all"
                     onClick={() => setMenuAbierto(false)}
                   >
-                    Libro de Calificaciones
+                    Formatos Oficiales
                   </Link>
                 </div>
               )}

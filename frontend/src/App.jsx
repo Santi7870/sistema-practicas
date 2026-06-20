@@ -10,6 +10,7 @@ import CambiarPasswordObligatorio from './pages/auth/CambiarPasswordObligatorio'
 // Páginas comunes (admin y estudiante)
 import Dashboard from './pages/Dashboard';
 import Notificaciones from './pages/Notificaciones';
+import FormatosOficiales from './pages/FormatosOficiales';
 
 // Páginas de administrador
 import RegistrosPendientes from './pages/admin/RegistrosPendientes';
@@ -69,6 +70,16 @@ function App() {
             element={
               <PrivateRoute>
                 <Notificaciones />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Rutas protegidas - Formatos Oficiales */}
+          <Route
+            path="/formatos"
+            element={
+              <PrivateRoute>
+                <FormatosOficiales />
               </PrivateRoute>
             }
           />

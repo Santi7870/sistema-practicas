@@ -9,6 +9,8 @@ const {
   Tarea,
   Entrega,
   Paralelo,
+  Configuracion,
+  sequelize,
 } = require('../models');
 const {
   ESTADOS_CUENTA,
@@ -272,6 +274,11 @@ const obtenerDetalleEstudiante = async (req, res) => {
               as: 'paralelo',
               attributes: ['id', 'nombre'],
             },
+            {
+              model: Docente,
+              as: 'tutor',
+              attributes: ['id', 'nombres'],
+            },
           ],
         },
       ],
@@ -477,9 +484,17 @@ const resetearEstudiante = async (req, res) => {
  */
 const obtenerEstadisticas = async (req, res) => {
   try {
-    // Contar registros pendientes
+    // Contar registros pendientes de cuenta
     const registrosPendientes = await Usuario.count({
       where: { estadoCuenta: ESTADOS_CUENTA.PENDIENTE },
+    });
+
+    // Contar postulaciones de Fase 1 pendientes de revisión
+    const postulacionesPendientes = await Inscripcion.count({
+      where: {
+        activa: true,
+        estadoDocumentosRequisitos: 'en_revision',
+      },
     });
 
     const includeUsuarioActivo = [
@@ -543,6 +558,7 @@ const obtenerEstadisticas = async (req, res) => {
       success: true,
       data: {
         registrosPendientes,
+        postulacionesPendientes,
         estudiantes: {
           total: totalEstudiantes,
           sinAsignar,
@@ -1146,6 +1162,179 @@ const descargarEntregaEstudiante = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Revisar (Aprobar o Rechazar) la inscripción y requisitos de Fase 1 del estudiante
+ * @route   PUT /api/admin/inscripciones/:inscripcionId/revisar
+ * @access  Private/Admin
+ */
+const revisarInscripcion = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { inscripcionId } = req.params;
+    const { estado, comentario } = req.body; // estado: 'aprobada' o 'rechazada'
+
+    if (!estado || !['aprobada', 'rechazada'].includes(estado)) {
+      await transaction.rollback();
+      return res.status(400).json({ success: false, message: 'El estado es requerido y debe ser "aprobada" o "rechazada".' });
+    }
+
+    if (estado === 'rechazada' && !comentario) {
+      await transaction.rollback();
+      return res.status(400).json({ success: false, message: 'Es obligatorio proporcionar un comentario/motivo de rechazo.' });
+    }
+
+    const inscripcion = await Inscripcion.findByPk(inscripcionId, {
+      include: [
+        { model: Estudiante, as: 'estudiante' },
+        { model: Convenio, as: 'convenio' }
+      ],
+      transaction
+    });
+
+    if (!inscripcion) {
+      await transaction.rollback();
+      return res.status(404).json({ success: false, message: 'Inscripción no encontrada.' });
+    }
+
+    const estudiante = inscripcion.estudiante;
+
+    if (estado === 'aprobada') {
+      // 1. Aprobar inscripción y requisitos
+      await inscripcion.update({
+        estadoInscripcion: ESTADOS_INSCRIPCION.APROBADA,
+        estadoDocumentosRequisitos: 'aprobado',
+        fechaAprobacion: new Date(),
+        comentarioAdmin: null
+      }, { transaction });
+
+      // 2. Aprobar los documentos físicos de Fase 1 en la BD
+      await Documento.update({
+        estado: 'aprobado',
+        fechaRevision: new Date()
+      }, {
+        where: { inscripcionId: inscripcion.id, fase: 1 },
+        transaction
+      });
+
+      // 3. Avanzar al estudiante a PENDIENTE_INICIO (Fase 2)
+      await estudiante.update({
+        estadoProceso: ESTADOS_PROCESO.PENDIENTE_INICIO
+      }, { transaction });
+
+      // 4. Notificar al estudiante
+      await Notificacion.create({
+        usuarioId: estudiante.usuarioId,
+        titulo: '¡Inscripción aprobada por el Administrador!',
+        mensaje: `Tu inscripción al convenio "${inscripcion.convenio.nombreEmpresa}" ha sido aprobada. Ahora estás habilitado para iniciar prácticas. Sube tus documentos de Fase 2.`,
+        tipo: 'aprobacion',
+        enlace: '/estudiante/mis-practicas'
+      }, { transaction });
+
+      await transaction.commit();
+      return res.json({ success: true, message: 'Inscripción aprobada con éxito.' });
+
+    } else {
+      // RECHAZADA
+      // 1. Mantener inscripción en pendiente pero marcar documentos como rechazados
+      await inscripcion.update({
+        estadoInscripcion: ESTADOS_INSCRIPCION.PENDIENTE, // Sigue pendiente para permitir corrección
+        estadoDocumentosRequisitos: 'rechazado',
+        comentarioAdmin: comentario
+      }, { transaction });
+
+      // 2. Marcar documentos de Fase 1 como rechazados en la BD
+      await Documento.update({
+        estado: 'rechazado',
+        comentarioAdmin: comentario,
+        fechaRevision: new Date()
+      }, {
+        where: { inscripcionId: inscripcion.id, fase: 1 },
+        transaction
+      });
+
+      // 3. Notificar al estudiante
+      await Notificacion.create({
+        usuarioId: estudiante.usuarioId,
+        titulo: 'Requisitos de inscripción rechazados',
+        mensaje: `Tus documentos de inscripción fueron rechazados. Motivo: ${comentario}. Por favor, corrígelos en tu panel.`,
+        tipo: 'rechazo',
+        enlace: '/dashboard'
+      }, { transaction });
+
+      await transaction.commit();
+      return res.json({ success: true, message: 'Inscripción rechazada. Se ha notificado al estudiante para correcciones.' });
+    }
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error en revisarInscripcion:', error);
+    res.status(500).json({ success: false, message: 'Error al revisar inscripción.', error: error.message });
+  }
+};
+
+/**
+ * @desc    Reabrir/Extender el plazo para subir requisitos a un estudiante
+ * @route   PUT /api/admin/inscripciones/:inscripcionId/reabrir-plazo
+ * @access  Private/Admin
+ */
+const reabrirPlazoRequisitos = async (req, res) => {
+  try {
+    const { inscripcionId } = req.params;
+    const { diasExtension, fechaLimite } = req.body;
+
+    const inscripcion = await Inscripcion.findByPk(inscripcionId, {
+      include: [{ model: Estudiante, as: 'estudiante' }]
+    });
+
+    if (!inscripcion) {
+      return res.status(404).json({ success: false, message: 'Inscripción no encontrada.' });
+    }
+
+    let nuevaFechaLimite;
+    let mensajeRespuesta;
+
+    if (fechaLimite) {
+      nuevaFechaLimite = new Date(fechaLimite);
+      if (isNaN(nuevaFechaLimite.getTime())) {
+        return res.status(400).json({ success: false, message: 'La fecha límite proporcionada no es válida.' });
+      }
+      mensajeRespuesta = `Plazo de entrega extendido de forma exitosa.`;
+    } else {
+      const dias = diasExtension ? parseInt(diasExtension, 10) : 3;
+      nuevaFechaLimite = new Date();
+      nuevaFechaLimite.setDate(nuevaFechaLimite.getDate() + dias);
+      mensajeRespuesta = `Plazo extendido por ${dias} días de forma exitosa.`;
+    }
+
+    await inscripcion.update({
+      fechaLimiteDocumentos: nuevaFechaLimite,
+      estadoDocumentosRequisitos: 'pendiente_entrega' // Volver a habilitar la subida
+    });
+
+    // Notificar al estudiante
+    await Notificacion.create({
+      usuarioId: inscripcion.estudiante.usuarioId,
+      titulo: 'Plazo de entrega extendido',
+      mensaje: `El administrador ha extendido tu plazo de entrega de requisitos. Tienes hasta el ${nuevaFechaLimite.toLocaleString('es-EC')} para subirlos.`,
+      tipo: 'sistema',
+      enlace: '/dashboard'
+    });
+
+    res.json({
+      success: true,
+      message: mensajeRespuesta,
+      data: {
+        fechaLimiteDocumentos: nuevaFechaLimite
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en reabrirPlazoRequisitos:', error);
+    res.status(500).json({ success: false, message: 'Error al reabrir el plazo.', error: error.message });
+  }
+};
+
+// Final of controller
 module.exports = {
   obtenerRegistrosPendientes,
   aprobarRegistro,
@@ -1162,4 +1351,6 @@ module.exports = {
   asignarTutorManual,
   obtenerCalificacionesEstudiante,
   descargarEntregaEstudiante,
+  revisarInscripcion,
+  reabrirPlazoRequisitos,
 };

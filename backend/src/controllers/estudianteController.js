@@ -311,9 +311,37 @@ const obtenerDashboard = async (req, res) => {
     } else if (aprobadoAcademicamente) {
       siguientePaso = '¡Felicitaciones! Has completado y aprobado académicamente todas tus prácticas preprofesionales.';
     } else if (estudiante.estadoProceso === 'sin_asignar') {
-      siguientePaso = 'Inscribete a un convenio de practicas';
+      siguientePaso = 'Inscríbete a un convenio de prácticas';
     } else if (estudiante.estadoProceso === 'asignado') {
-      siguientePaso = 'Espera la aprobacion de tu inscripcion';
+      const insc = estudiante.inscripcion;
+      if (insc) {
+        if (insc.estadoDocumentosRequisitos === 'pendiente_entrega') {
+          siguientePaso = 'Sube los documentos de requisitos obligatorios para tu postulación';
+          accionesRequeridas.push({
+            tipo: 'subir_requisitos',
+            descripcion: 'Debes subir el Requisito 1 y Requisito 2 en tu panel de control para que el administrador pueda revisar tu solicitud.',
+            urgente: true,
+          });
+        } else if (insc.estadoDocumentosRequisitos === 'en_revision') {
+          siguientePaso = 'Tus requisitos están en revisión';
+          accionesRequeridas.push({
+            tipo: 'esperar_revision',
+            descripcion: 'El administrador está revisando tus documentos de requisitos. Te notificaremos la resolución.',
+            urgente: false,
+          });
+        } else if (insc.estadoDocumentosRequisitos === 'rechazado') {
+          siguientePaso = 'Tus documentos fueron rechazados';
+          accionesRequeridas.push({
+            tipo: 'subir_requisitos',
+            descripcion: 'Corrige y vuelve a subir tus documentos de requisitos. Revisa los comentarios de retroalimentación en tu panel.',
+            urgente: true,
+          });
+        } else {
+          siguientePaso = 'Espera la aprobación de tu inscripción por el tutor académico';
+        }
+      } else {
+        siguientePaso = 'Espera la aprobación de tu inscripción por el tutor académico';
+      }
     } else if (estudiante.estadoProceso === 'pendiente_inicio') {
       siguientePaso = 'Revisa tus ciclos y tareas asignadas por tu docente';
     } else if (estudiante.estadoProceso === 'en_proceso') {

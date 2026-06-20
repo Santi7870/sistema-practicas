@@ -39,6 +39,7 @@ const FASES = {
 
 // Tipos de documentos por fase
 const TIPOS_DOCUMENTOS = {
+  FASE_1: ['Requisito 1', 'Requisito 2'],
   FASE_2: ['Oficio de practicas', 'Anexo A'],
   FASE_3: ['Respuesta de la empresa'],
   FASE_4: ['Certificado de practicas realizadas'],

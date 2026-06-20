@@ -1,4 +1,5 @@
 const { Notificacion, Usuario } = require('../models');
+const { verificarConveniosVencidos } = require('../utils/verificadorExpiracion');
 
 /**
  * @desc    Obtener notificaciones del usuario
@@ -7,6 +8,7 @@ const { Notificacion, Usuario } = require('../models');
  */
 const obtenerNotificaciones = async (req, res) => {
   try {
+    await verificarConveniosVencidos();
     const { limite = 20, pagina = 1 } = req.query;
 
     const offset = (pagina - 1) * limite;
@@ -49,6 +51,7 @@ const obtenerNotificaciones = async (req, res) => {
  */
 const obtenerNoLeidas = async (req, res) => {
   try {
+    await verificarConveniosVencidos();
     const notificaciones = await Notificacion.findAll({
       where: {
         usuarioId: req.usuario.id,

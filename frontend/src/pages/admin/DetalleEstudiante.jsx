@@ -17,6 +17,7 @@ import {
   FiAlertCircle,
   FiArrowLeft,
   FiRefreshCw,
+  FiEye,
 } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -35,12 +36,21 @@ const DetalleEstudiante = () => {
     documentoId: null,
     tipo: 'documento' // 'documento' o 'inscripcion'
   });
+  const [modalExtension, setModalExtension] = useState({
+    abierto: false,
+    nuevaFecha: '',
+  });
   const [motivoRechazo, setMotivoRechazo] = useState('');
+  const [preview, setPreview] = useState({ open: false, url: '', nombre: '' });
+
+  useEffect(() => {
+    return () => {
+      if (preview.url) URL.revokeObjectURL(preview.url);
+    };
+  }, [preview.url]);
 
   // Estados para tutor
   const [docentes, setDocentes] = useState([]);
-  const [tutorSeleccionado, setTutorSeleccionado] = useState(null);
-  const [guardandoTutor, setGuardandoTutor] = useState(false);
   const [calificaciones, setCalificaciones] = useState(null);
   const [cargandoCalificaciones, setCargandoCalificaciones] = useState(false);
 
@@ -66,8 +76,6 @@ const DetalleEstudiante = () => {
       
       // Si tiene inscripción, cargar documentos y calificaciones
       if (studentData.inscripcion) {
-        setTutorSeleccionado(studentData.inscripcion.tutorId);
-        
         setCargandoCalificaciones(true);
         const [docsResponse, califsResponse] = await Promise.all([
           api.get(`/documentos/inscripcion/${studentData.inscripcion.id}`),
@@ -96,16 +104,18 @@ const DetalleEstudiante = () => {
 
   // ============ APROBACIÓN DE INSCRIPCIÓN ============
   const aprobarInscripcion = async (inscripcionId) => {
-    if (!window.confirm('¿Aprobar la inscripción de este estudiante?')) {
+    if (!window.confirm('¿Aprobar la inscripción de este estudiante y sus requisitos?')) {
       return;
     }
 
     setProcesando('inscripcion');
     try {
-      await api.put(`/inscripciones/${inscripcionId}/aprobar`);
+      await api.put(`/admin/inscripciones/${inscripcionId}/revisar`, {
+        estado: 'aprobada'
+      });
       setMensaje({
         tipo: 'success',
-        texto: 'Inscripción aprobada. El estudiante puede comenzar a subir documentos.',
+        texto: 'Inscripción aprobada exitosamente. Se notificó al estudiante.',
       });
       cargarDatos();
     } catch (error) {
@@ -136,12 +146,13 @@ const DetalleEstudiante = () => {
 
     setProcesando('inscripcion');
     try {
-      await api.put(`/inscripciones/${modalRechazo.documentoId}/rechazar`, {
+      await api.put(`/admin/inscripciones/${modalRechazo.documentoId}/revisar`, {
+        estado: 'rechazada',
         comentario: motivoRechazo,
       });
       setMensaje({
         tipo: 'success',
-        texto: 'Inscripción rechazada. Se notificó al estudiante.',
+        texto: 'Inscripción rechazada. Se notificó al estudiante para que realice correcciones.',
       });
       cargarDatos();
       setModalRechazo({ abierto: false, documentoId: null, tipo: 'documento' });
@@ -219,6 +230,45 @@ const DetalleEstudiante = () => {
     }
   };
 
+  const guardarExtensionPlazo = async () => {
+    if (!modalExtension.nuevaFecha) {
+      alert('Por favor selecciona una fecha y hora válida.');
+      return;
+    }
+
+    setProcesando(true);
+    try {
+      await api.put(`/admin/inscripciones/${estudiante.inscripcion.id}/reabrir-plazo`, {
+        fechaLimite: modalExtension.nuevaFecha
+      });
+      setMensaje({ tipo: 'success', texto: 'Plazo reabierto con éxito' });
+      cargarDatos();
+      setModalExtension({ abierto: false, nuevaFecha: '' });
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: err.response?.data?.message || err.message || 'Error al reabrir plazo' });
+    } finally {
+      setProcesando(null);
+      setTimeout(() => setMensaje({ tipo: '', texto: '' }), 3000);
+    }
+  };
+
+  const abrirModalExtensionHelper = () => {
+    const defaultDate = new Date();
+    defaultDate.setDate(defaultDate.getDate() + 3);
+    defaultDate.setHours(23, 59, 0, 0);
+    const year = defaultDate.getFullYear();
+    const month = String(defaultDate.getMonth() + 1).padStart(2, '0');
+    const day = String(defaultDate.getDate()).padStart(2, '0');
+    const hours = String(defaultDate.getHours()).padStart(2, '0');
+    const minutes = String(defaultDate.getMinutes()).padStart(2, '0');
+    const formatted = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+    setModalExtension({
+      abierto: true,
+      nuevaFecha: formatted
+    });
+  };
+
   const getEstadoBadge = (estado) => {
     const badges = {
       sin_asignar: { color: 'badge-gray', texto: 'Sin Asignar' },
@@ -257,6 +307,42 @@ const DetalleEstudiante = () => {
         tipo: 'error',
         texto: 'Error al descargar documento',
       });
+    }
+  };
+
+  const verDocumento = async (documentoId, nombreArchivo) => {
+    try {
+      const response = await api.get(`/documentos/${documentoId}/descargar`, {
+        responseType: 'blob',
+      });
+      const contentType = response.headers['content-type'] || 'application/octet-stream';
+      const blob = new Blob([response.data], { type: contentType });
+
+      if (!contentType.includes('pdf')) {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', nombreArchivo);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return;
+      }
+
+      if (preview.url) URL.revokeObjectURL(preview.url);
+      const url = URL.createObjectURL(blob);
+      setPreview({
+        open: true,
+        url,
+        nombre: nombreArchivo || `documento-${documentoId}.pdf`,
+      });
+    } catch (error) {
+      setMensaje({
+        tipo: 'error',
+        texto: 'No se pudo cargar la vista previa del documento.',
+      });
+      setTimeout(() => setMensaje({ tipo: '', texto: '' }), 4000);
     }
   };
 
@@ -319,32 +405,6 @@ const DetalleEstudiante = () => {
         tipo: 'error',
         texto: error.message || 'Error al resetear estudiante',
       });
-    }
-  };
-
-  const guardarTutorManual = async () => {
-    setGuardandoTutor(true);
-    try {
-      const response = await api.put(
-        `/admin/estudiantes/${estudiante.id}/asignar-tutor`,
-        { tutorId: tutorSeleccionado ? parseInt(tutorSeleccionado) : null }
-      );
-      if (response.data.success) {
-        setMensaje({
-          tipo: 'success',
-          texto: 'Tutor académico actualizado de manera manual exitosamente.',
-        });
-        cargarDatos();
-      }
-    } catch (error) {
-      console.error('Error al asignar tutor manualmente:', error);
-      setMensaje({
-        tipo: 'error',
-        texto: error.response?.data?.message || 'Error al actualizar el tutor.',
-      });
-    } finally {
-      setGuardandoTutor(false);
-      setTimeout(() => setMensaje({ tipo: '', texto: '' }), 4000);
     }
   };
 
@@ -1097,83 +1157,113 @@ const DetalleEstudiante = () => {
                       )}
                     </p>
                   </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                      Fecha Límite de Entrega (Fase 1)
+                    </label>
+                    <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <FiClock className="h-3.5 w-3.5 text-slate-400" />
+                      {formatearFecha(estudiante.inscripcion.fechaLimiteDocumentos)}
+                    </p>
+                  </div>
                 </div>
 
-                {/* TUTOR ACADÉMICO - ASIGNACIÓN MANUAL */}
+                {/* TUTOR ACADÉMICO */}
                 {estudiante.inscripcion.estadoInscripcion === 'aprobada' && (
                   <div className="mt-6 pt-5 border-t border-slate-100">
-                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-3">
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2">
                       Tutor Académico Asignado
                     </h3>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                      <select
-                        value={tutorSeleccionado || ''}
-                        onChange={(e) => setTutorSeleccionado(e.target.value || null)}
-                        className="flex-1 text-slate-800 text-sm border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-[#ec3724] focus:border-[#ec3724] bg-slate-50"
-                      >
-                        <option value="">-- Sin Tutor Asignado --</option>
-                        {docentes.map((docente) => (
-                          <option key={docente.id} value={docente.id}>
-                            {docente.nombres} ({docente.tipoTutor === 'ambas' ? 'Ambas Especialidades' : docente.tipoTutor === 'comunales' ? 'Comunales' : 'Laborales'})
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={guardarTutorManual}
-                        disabled={guardandoTutor || estudiante.inscripcion.tutorId === (tutorSeleccionado ? parseInt(tutorSeleccionado) : null)}
-                        className="px-4 py-2.5 bg-[#ec3724] hover:bg-[#d32010] text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center space-x-1.5 disabled:opacity-50"
-                      >
-                        {guardandoTutor ? (
-                          <>
-                            <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                            </svg>
-                            <span>Guardando...</span>
-                          </>
-                        ) : (
-                          <>
-                            <FiCheck className="h-3.5 w-3.5" />
-                            <span>Actualizar Tutor</span>
-                          </>
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                      <p className="text-sm font-bold text-slate-800">
+                        {estudiante.inscripcion.tutor ? estudiante.inscripcion.tutor.nombres : (
+                          docentes.find(d => d.id === estudiante.inscripcion.tutorId)?.nombres || '-- Sin Tutor Asignado --'
                         )}
-                      </button>
+                      </p>
                     </div>
-                    <p className="text-[10px] font-semibold text-slate-500 mt-2 leading-relaxed">
-                      Puedes modificar el tutor asignado en cualquier momento. El balanceo de distribución automático distribuirá equitativamente alumnos restantes sin tutor.
-                    </p>
                   </div>
                 )}
 
                 {/* BOTONES DE APROBACIÓN/RECHAZO DE INSCRIPCIÓN */}
                 {estudiante.inscripcion.estadoInscripcion === 'pendiente' && (
-                  <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-0.5">
-                        Inscripción pendiente de aprobación
-                      </p>
-                      <p className="text-xs font-semibold text-amber-700 leading-relaxed">
-                        Revisa los datos declarados y aprueba o rechaza el acceso al proceso.
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => aprobarInscripcion(estudiante.inscripcion.id)}
-                        disabled={procesando === 'inscripcion'}
-                        className="bg-[#ec3724] hover:bg-[#d32010] text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center space-x-1.5 disabled:opacity-50 whitespace-nowrap"
-                      >
-                        <FiCheck className="h-3.5 w-3.5" />
-                        <span>{procesando === 'inscripcion' ? 'Aprobando...' : 'Aprobar'}</span>
-                      </button>
-                      <button
-                        onClick={() => abrirModalRechazoInscripcion(estudiante.inscripcion.id)}
-                        disabled={procesando === 'inscripcion'}
-                        className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors border border-slate-200 flex items-center space-x-1.5 disabled:opacity-50 whitespace-nowrap"
-                      >
-                        <FiX className="h-3.5 w-3.5" />
-                        <span>Rechazar</span>
-                      </button>
-                    </div>
+                  <div className="mt-6">
+                    {estudiante.inscripcion.estadoDocumentosRequisitos === 'pendiente_entrega' && (
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                            <p className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                              <FiClock className="h-4 w-4" /> Esperando Requisitos del Estudiante
+                            </p>
+                            <p className="text-xs font-semibold text-slate-500 leading-relaxed mt-1">
+                              El estudiante se ha pre-registrado en el convenio, pero aún no ha subido sus 2 documentos de requisitos obligatorios de Fase 1 para la revisión académica.
+                            </p>
+                          </div>
+                          {estudiante.estadoProceso === 'asignado' && (
+                            <button
+                              type="button"
+                              onClick={abrirModalExtensionHelper}
+                              className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-3.5 rounded-lg text-[10px] uppercase tracking-wider transition-colors inline-flex items-center gap-1.5 shadow-sm whitespace-nowrap self-start sm:self-center"
+                            >
+                              <FiClock className="h-4 w-4" /> Reabrir / Extender Plazo
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {estudiante.inscripcion.estadoDocumentosRequisitos === 'en_revision' && (
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                            <FiAlertCircle className="h-4 w-4" /> Requisitos en revisión
+                          </p>
+                          <p className="text-xs font-semibold text-amber-700 leading-relaxed mt-1">
+                            El estudiante ha subido los 2 documentos obligatorios de Fase 1. Revisa los archivos en la sección inferior de documentos antes de aprobar o rechazar la postulación.
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => aprobarInscripcion(estudiante.inscripcion.id)}
+                            disabled={procesando === 'inscripcion'}
+                            className="bg-[#ec3724] hover:bg-[#d32010] text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center space-x-1.5 disabled:opacity-50 whitespace-nowrap"
+                          >
+                            <FiCheck className="h-3.5 w-3.5" />
+                            <span>{procesando === 'inscripcion' ? 'Aprobando...' : 'Aprobar'}</span>
+                          </button>
+                          <button
+                            onClick={() => abrirModalRechazoInscripcion(estudiante.inscripcion.id)}
+                            disabled={procesando === 'inscripcion'}
+                            className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors border border-slate-200 flex items-center space-x-1.5 disabled:opacity-50 whitespace-nowrap"
+                          >
+                            <FiX className="h-3.5 w-3.5" />
+                            <span>Rechazar</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {estudiante.inscripcion.estadoDocumentosRequisitos === 'rechazado' && (
+                      <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-bold text-rose-800 uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                            <FiX className="h-4 w-4" /> Requisitos rechazados - Esperando correcciones
+                          </p>
+                          <p className="text-xs font-semibold text-rose-700 leading-relaxed mt-1">
+                            Has rechazado los requisitos de inscripción de este estudiante. Se le ha habilitado el buzón de resubida para que pueda subir los archivos corregidos o cancelar su postulación.
+                          </p>
+                        </div>
+                        {estudiante.estadoProceso === 'asignado' && (
+                          <button
+                            type="button"
+                            onClick={abrirModalExtensionHelper}
+                            className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-3.5 rounded-lg text-[10px] uppercase tracking-wider transition-colors inline-flex items-center gap-1.5 shadow-sm whitespace-nowrap self-start sm:self-center"
+                          >
+                            <FiClock className="h-4 w-4" /> Reabrir / Extender Plazo
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1200,9 +1290,58 @@ const DetalleEstudiante = () => {
               </div>
             )}
 
-            {/* Documentos por Fase - SOLO SI LA INSCRIPCIÓN ESTÁ APROBADA */}
-            {documentos.length > 0 && estudiante.inscripcion?.estadoInscripcion === 'aprobada' && (
+            {/* Documentos por Fase */}
+            {documentos.length > 0 && (
               <div className="space-y-4">
+                {/* Fase 1 */}
+                {documentosPorFase(1).length > 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 p-6">
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 flex items-center justify-between">
+                      <span>Fase 1: Requisitos de Postulación</span>
+                      {estudiante.inscripcion && (
+                        <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          estudiante.inscripcion.estadoDocumentosRequisitos === 'aprobado' ? 'bg-green-55 text-green-700 border border-green-200' :
+                          estudiante.inscripcion.estadoDocumentosRequisitos === 'rechazado' ? 'bg-red-55 text-red-700 border border-red-200' :
+                          estudiante.inscripcion.estadoDocumentosRequisitos === 'en_revision' ? 'bg-amber-55 text-amber-700 border border-amber-200' :
+                          'bg-slate-100 text-slate-700'
+                        }`}>
+                          {estudiante.inscripcion.estadoDocumentosRequisitos === 'en_revision' ? 'En Revisión' : 
+                           estudiante.inscripcion.estadoDocumentosRequisitos === 'rechazado' ? 'Rechazado' :
+                           estudiante.inscripcion.estadoDocumentosRequisitos === 'aprobado' ? 'Aprobado' : 'Pendiente Entrega'}
+                        </span>
+                      )}
+                    </h3>
+
+                    {/* Botón de Reabrir Plazo si expirado y está asignado */}
+                    {estudiante.estadoProceso === 'asignado' && estudiante.inscripcion && (
+                      <div className="mb-4 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={abrirModalExtensionHelper}
+                          className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-1.5 px-3 rounded text-[10px] uppercase tracking-wider transition-colors inline-flex items-center gap-1 shadow-sm border border-sky-600"
+                        >
+                          <FiClock className="h-3.5 w-3.5" /> Reabrir / Extender Plazo
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      {documentosPorFase(1).map((doc) => (
+                        <DocumentoItem
+                          key={doc.id}
+                          documento={doc}
+                          procesando={procesando}
+                          onAprobar={aprobarDocumento}
+                          onRechazar={abrirModalRechazoDocumento}
+                          onDescargar={descargarDocumento}
+                          onVer={verDocumento}
+                          getEstadoDocBadge={getEstadoDocBadge}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Fase 2 */}
                 {documentosPorFase(2).length > 0 && (
                   <div className="bg-white rounded-xl border border-slate-200 p-6">
@@ -1218,6 +1357,7 @@ const DetalleEstudiante = () => {
                           onAprobar={aprobarDocumento}
                           onRechazar={abrirModalRechazoDocumento}
                           onDescargar={descargarDocumento}
+                          onVer={verDocumento}
                           getEstadoDocBadge={getEstadoDocBadge}
                         />
                       ))}
@@ -1240,6 +1380,7 @@ const DetalleEstudiante = () => {
                           onAprobar={aprobarDocumento}
                           onRechazar={abrirModalRechazoDocumento}
                           onDescargar={descargarDocumento}
+                          onVer={verDocumento}
                           getEstadoDocBadge={getEstadoDocBadge}
                         />
                       ))}
@@ -1262,6 +1403,7 @@ const DetalleEstudiante = () => {
                           onAprobar={aprobarDocumento}
                           onRechazar={abrirModalRechazoDocumento}
                           onDescargar={descargarDocumento}
+                          onVer={verDocumento}
                           getEstadoDocBadge={getEstadoDocBadge}
                         />
                       ))}
@@ -1483,6 +1625,74 @@ const DetalleEstudiante = () => {
             </div>
           </div>
         )}
+
+        {/* Modal de Extensión de Plazo */}
+        {modalExtension.abierto && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl border border-slate-200 max-w-sm w-full p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                  Extender Plazo de Requisitos
+                </h2>
+                <button
+                  onClick={() => setModalExtension({ abierto: false, nuevaFecha: '' })}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <FiX className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Nueva Fecha y Hora Límite
+                </label>
+                <input
+                  type="datetime-local"
+                  value={modalExtension.nuevaFecha}
+                  onChange={(e) => setModalExtension({ ...modalExtension, nuevaFecha: e.target.value })}
+                  className="w-full text-slate-800 text-sm border border-slate-200 rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-[#ec3724] focus:border-[#ec3724] bg-slate-50"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setModalExtension({ abierto: false, nuevaFecha: '' })}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors border border-slate-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={guardarExtensionPlazo}
+                  className="flex-1 bg-sky-650 bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors"
+                  disabled={procesando}
+                >
+                  {procesando ? 'Guardando...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {preview.open && (
+          <div className="fixed inset-0 z-50 bg-black/70 p-4 flex items-center justify-center backdrop-blur-sm">
+            <div className="bg-white rounded-xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden border border-slate-200 shadow-2xl">
+              <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider truncate">Vista Previa - {preview.nombre}</h4>
+                <button
+                  className="bg-slate-100 hover:bg-slate-250 text-slate-700 font-bold py-1 px-3 rounded-lg text-xs uppercase border border-slate-250"
+                  onClick={() => {
+                    if (preview.url) URL.revokeObjectURL(preview.url);
+                    setPreview({ open: false, url: '', nombre: '' });
+                  }}
+                >
+                  Cerrar
+                </button>
+              </div>
+              <iframe title="documento-preview" src={preview.url} className="w-full h-full border-0" />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1495,6 +1705,7 @@ const DocumentoItem = ({
   onAprobar,
   onRechazar,
   onDescargar,
+  onVer,
   getEstadoDocBadge,
 }) => {
   const badge = getEstadoDocBadge(documento.estado);
@@ -1529,6 +1740,17 @@ const DocumentoItem = ({
             {badge.texto}
           </span>
 
+          {documento.nombreArchivo?.toLowerCase().endsWith('.pdf') && (
+            <button
+              onClick={() => onVer(documento.id, documento.nombreArchivo)}
+              className="bg-white hover:bg-slate-50 text-slate-700 font-bold p-2 rounded border border-slate-200 transition-colors flex items-center gap-1.5"
+              title="Visualizar PDF"
+            >
+              <FiEye className="h-4 w-4" />
+              <span className="text-[10px] font-black uppercase">Visualizar</span>
+            </button>
+          )}
+
           <button
             onClick={() => onDescargar(documento.id, documento.nombreArchivo)}
             className="bg-white hover:bg-slate-50 text-slate-700 font-bold p-2 rounded border border-slate-200 transition-colors"
@@ -1537,7 +1759,7 @@ const DocumentoItem = ({
             <FiDownload className="h-4 w-4" />
           </button>
 
-          {documento.estado === 'pendiente' && (
+          {documento.estado === 'pendiente' && documento.fase !== 1 && (
             <>
               <button
                 onClick={() => onAprobar(documento.id, documento.tipoDocumento)}

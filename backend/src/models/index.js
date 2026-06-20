@@ -12,6 +12,8 @@ const Ciclo = require('./Ciclo');
 const Tarea = require('./Tarea');
 const Entrega = require('./Entrega');
 const Paralelo = require('./Paralelo');
+const Configuracion = require('./configuracion');
+const FormatoDocumento = require('./formatoDocumento');
 
 // Usuario - Estudiante (1:1)
 Usuario.hasOne(Estudiante, {
@@ -163,6 +165,17 @@ Inscripcion.belongsTo(Paralelo, {
   as: 'paralelo',
 });
 
+// Docente - FormatoDocumento (1:N)
+Docente.hasMany(FormatoDocumento, {
+  foreignKey: 'docenteId',
+  as: 'formatos',
+  onDelete: 'CASCADE',
+});
+FormatoDocumento.belongsTo(Docente, {
+  foreignKey: 'docenteId',
+  as: 'docente',
+});
+
 module.exports = {
   sequelize,
   Usuario,
@@ -176,5 +189,7 @@ module.exports = {
   Tarea,
   Entrega,
   Paralelo,
+  Configuracion,
+  FormatoDocumento,
 };
 
