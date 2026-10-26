@@ -113,6 +113,32 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
       console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
+
+      // ─── Keep-Alive: evita que Render (free tier) apague el servidor ──────
+      // Render duerme el servicio tras 15 min de inactividad.
+      // Este ping cada 14 min lo mantiene despierto sin instalar nada extra.
+      if (process.env.NODE_ENV === 'production' && process.env.RENDER_EXTERNAL_URL) {
+        const https = require('https');
+        const PING_INTERVAL_MS = 14 * 60 * 1000; // 14 minutos
+
+        const pingServer = () => {
+          const url = `${process.env.RENDER_EXTERNAL_URL}/api/health`;
+          https.get(url, (res) => {
+            console.log(`[Keep-Alive] Ping OK → ${url} (${res.statusCode})`);
+          }).on('error', (err) => {
+            console.warn(`[Keep-Alive] Ping falló: ${err.message}`);
+          });
+        };
+
+        // Primer ping a los 5 minutos del inicio (no inmediatamente)
+        setTimeout(() => {
+          pingServer();
+          setInterval(pingServer, PING_INTERVAL_MS);
+        }, 5 * 60 * 1000);
+
+        console.log(`[Keep-Alive] Activado → ping cada 14 min a ${process.env.RENDER_EXTERNAL_URL}/api/health`);
+      }
+      // ─────────────────────────────────────────────────────────────────────
     });
   } catch (error) {
     console.error('Error al iniciar el servidor:', error);

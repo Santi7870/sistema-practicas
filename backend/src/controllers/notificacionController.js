@@ -1,6 +1,19 @@
 const { Notificacion, Usuario } = require('../models');
 const { verificarConveniosVencidos } = require('../utils/verificadorExpiracion');
 
+// ── Cache TTL: verificarConveniosVencidos es costosa, máx 1 vez cada 5 min ───
+let _ultimaVerificacion = 0;
+const VERIFICACION_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
+const verificarConveniosConCache = async () => {
+  const ahora = Date.now();
+  if (ahora - _ultimaVerificacion > VERIFICACION_TTL_MS) {
+    _ultimaVerificacion = ahora;
+    await verificarConveniosVencidos();
+  }
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * @desc    Obtener notificaciones del usuario
  * @route   GET /api/notificaciones
@@ -8,7 +21,7 @@ const { verificarConveniosVencidos } = require('../utils/verificadorExpiracion')
  */
 const obtenerNotificaciones = async (req, res) => {
   try {
-    await verificarConveniosVencidos();
+    await verificarConveniosConCache();
     const { limite = 20, pagina = 1 } = req.query;
 
     const offset = (pagina - 1) * limite;
@@ -51,7 +64,7 @@ const obtenerNotificaciones = async (req, res) => {
  */
 const obtenerNoLeidas = async (req, res) => {
   try {
-    await verificarConveniosVencidos();
+    await verificarConveniosConCache();
     const notificaciones = await Notificacion.findAll({
       where: {
         usuarioId: req.usuario.id,

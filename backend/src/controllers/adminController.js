@@ -12,6 +12,7 @@ const {
   Configuracion,
   sequelize,
 } = require('../models');
+const { Op } = require('sequelize');
 const {
   ESTADOS_CUENTA,
   ESTADOS_PROCESO,
@@ -178,7 +179,29 @@ const obtenerEstudiantes = async (req, res) => {
       whereEstudiante.estadoProceso = estado;
     }
 
-    const estudiantes = await Estudiante.findAll({
+    // ── Búsqueda en SQL (Op.iLike = case-insensitive nativo de PostgreSQL) ──
+    // Antes: se traían TODOS los estudiantes a Node y se filtraba en RAM.
+    // Ahora: la DB devuelve solo los registros que coinciden.
+    if (buscar && buscar.trim() !== '') {
+      const termino = `%${buscar.trim()}%`;
+      whereEstudiante[Op.or] = [
+        { nombres: { [Op.iLike]: termino } },
+        { codigo: { [Op.iLike]: termino } },
+      ];
+      // El email vive en la tabla usuarios → se agrega al where del include
+      whereUsuario[Op.or] = [
+        { email: { [Op.iLike]: termino } },
+      ];
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
+    // ── Paginación server-side: máx 50 estudiantes por página ────────────────
+    const limite = Math.min(parseInt(req.query.limite) || 50, 100); // máx 100
+    const pagina = Math.max(parseInt(req.query.pagina) || 1, 1);
+    const offset = (pagina - 1) * limite;
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const { count, rows: estudiantes } = await Estudiante.findAndCountAll({
       where: whereEstudiante,
       include: [
         {
@@ -211,24 +234,21 @@ const obtenerEstudiantes = async (req, res) => {
         },
       ],
       order: [['createdAt', 'DESC']],
+      limit: limite,
+      offset,
+      distinct: true, // necesario para que count sea correcto con includes
     });
-
-    // Filtrar por búsqueda si se proporciona
-    let estudiantesFiltrados = estudiantes;
-    if (buscar) {
-      const buscarLower = buscar.toLowerCase();
-      estudiantesFiltrados = estudiantes.filter(
-        (est) =>
-          est.nombres?.toLowerCase().includes(buscarLower) ||
-          est.codigo?.includes(buscar) ||
-          est.usuario.email.toLowerCase().includes(buscarLower)
-      );
-    }
 
     res.json({
       success: true,
-      cantidad: estudiantesFiltrados.length,
-      data: estudiantesFiltrados,
+      cantidad: count,
+      data: estudiantes,
+      paginacion: {
+        total: count,
+        pagina,
+        limite,
+        totalPaginas: Math.ceil(count / limite),
+      },
     });
   } catch (error) {
     console.error('Error en obtenerEstudiantes:', error);

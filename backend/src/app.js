@@ -1,8 +1,18 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const helmet = require('helmet');
+const compression = require('compression');
 
 const app = express();
+
+// ── Seguridad: cabeceras HTTP seguras (XSS, clickjacking, MIME sniff, etc.) ──
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+
+// ── Rendimiento: compresión gzip de todas las respuestas JSON/texto ───────────
+// Reduce el payload ~60-80%. Sin esto, cada respuesta viaja sin comprimir
+// entre Render (backend) y Vercel (frontend) y el navegador.
+app.use(compression());
 
 // Middlewares con límites aumentados para archivos grandes
 app.use(cors());

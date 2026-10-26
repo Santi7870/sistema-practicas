@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import api from '../../services/api';
@@ -16,7 +16,9 @@ import {
   FiX,
   FiInfo,
   FiBriefcase,
-  FiUser
+  FiUser,
+  FiChevronLeft,
+  FiChevronRight,
 } from 'react-icons/fi';
 
 const ListaEstudiantes = () => {
@@ -27,6 +29,11 @@ const ListaEstudiantes = () => {
   const [tabActiva, setTabActiva] = useState('laborales'); // 'laborales', 'comunales', 'sin_matricula'
   const [paraleloFiltro, setParaleloFiltro] = useState('todos');
   const [cargando, setCargando] = useState(true);
+  // ── Paginación ───────────────────────────────────────────────────────────
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [paginacion, setPaginacion] = useState(null); // { total, pagina, limite, totalPaginas }
+  // ── Debounce buscador ────────────────────────────────────────────────────
+  const debounceRef = useRef(null);
   const location = useLocation();
 
   // Estados para el proceso de Auto-Asignación
@@ -75,11 +82,14 @@ const ListaEstudiantes = () => {
     }
   };
 
-  const cargarEstudiantes = async () => {
+  const cargarEstudiantes = async (pagina = 1) => {
     try {
       setCargando(true);
-      const response = await api.get('/admin/estudiantes');
+      const response = await api.get(`/admin/estudiantes?pagina=${pagina}&limite=50`);
       setEstudiantes(response.data.data);
+      if (response.data.paginacion) {
+        setPaginacion(response.data.paginacion);
+      }
     } catch (error) {
       console.error('Error al cargar estudiantes:', error);
     } finally {
@@ -276,8 +286,13 @@ const ListaEstudiantes = () => {
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-450" />
             <input
               type="text"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
+              defaultValue={busqueda}
+              onChange={(e) => {
+                const val = e.target.value;
+                // Debounce 350ms: evita filtrar en cada keystroke
+                if (debounceRef.current) clearTimeout(debounceRef.current);
+                debounceRef.current = setTimeout(() => setBusqueda(val), 350);
+              }}
               placeholder="Buscar por estudiante, código de barras, tutor asignado o convenio..."
               className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800"
             />
@@ -519,6 +534,47 @@ const ListaEstudiantes = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* ── Controles de Paginación ──────────────────────────────── */}
+            {paginacion && paginacion.totalPaginas > 1 && (
+              <div className="px-4 py-3 border-t border-slate-200 flex items-center justify-between bg-slate-50">
+                <span className="text-[10px] font-bold text-slate-500">
+                  Mostrando {((paginacion.pagina - 1) * paginacion.limite) + 1}–{Math.min(paginacion.pagina * paginacion.limite, paginacion.total)} de {paginacion.total} estudiantes
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    disabled={paginaActual <= 1}
+                    onClick={() => { const p = paginaActual - 1; setPaginaActual(p); cargarEstudiantes(p); }}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <FiChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  {Array.from({ length: paginacion.totalPaginas }, (_, i) => i + 1)
+                    .filter(p => Math.abs(p - paginaActual) <= 2)
+                    .map(p => (
+                      <button
+                        key={p}
+                        onClick={() => { setPaginaActual(p); cargarEstudiantes(p); }}
+                        className={`w-7 h-7 rounded-lg text-[10px] font-black border transition-colors ${
+                          p === paginaActual
+                            ? 'bg-[#ec3724] text-white border-[#ec3724]'
+                            : 'border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  <button
+                    disabled={paginaActual >= paginacion.totalPaginas}
+                    onClick={() => { const p = paginaActual + 1; setPaginaActual(p); cargarEstudiantes(p); }}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <FiChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+            {/* ─────────────────────────────────────────────────────────── */}
           </div>
         )}
       </div>
