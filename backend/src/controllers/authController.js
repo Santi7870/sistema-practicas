@@ -75,7 +75,8 @@ const register = async (req, res) => {
         admin.id,
         'registro',
         'Nuevo registro pendiente',
-        `El estudiante ${email} ha solicitado registro en el sistema.`
+        `El estudiante ${email} ha solicitado registro en el sistema.`,
+        '/admin/registros-pendientes'
       );
     }
 

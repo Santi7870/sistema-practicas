@@ -59,6 +59,7 @@ const verificarConveniosVencidos = async () => {
         titulo,
         mensaje,
         leida: false,
+        enlace: '/admin/convenios',
       });
     }
 

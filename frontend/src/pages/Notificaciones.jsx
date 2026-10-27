@@ -5,7 +5,6 @@ import Navbar from '../components/Navbar';
 import api from '../services/api';
 import {
   FiBell,
-  FiCheck,
   FiTrash2,
   FiCheckCircle,
   FiAlertCircle,
@@ -17,7 +16,7 @@ import { es } from 'date-fns/locale';
 
 const Notificaciones = () => {
   const navigate = useNavigate();
-  const { esAdmin } = useAuth();
+  const { esAdmin, esDocente } = useAuth();
   const [notificaciones, setNotificaciones] = useState([]);
   const [filtro, setFiltro] = useState('todas'); // todas, leidas, no_leidas
   const [cargando, setCargando] = useState(true);
@@ -35,12 +34,21 @@ const Notificaciones = () => {
       }
       return notificacion.enlace;
     }
-    
+
+    // Destinos para notificaciones creadas antes de guardar enlaces explícitos.
     if (esAdmin()) {
+      if (notificacion.tipo === 'registro' && notificacion.titulo === 'Nuevo registro pendiente') {
+        return '/admin/registros-pendientes';
+      }
+      if (/^Convenios? Expirados?$/.test(notificacion.titulo || '')) {
+        return '/admin/convenios';
+      }
       return '/admin/estudiantes';
-    } else {
-      return '/estudiante/mis-practicas';
     }
+    if (esDocente()) return '/docente/dashboard';
+    if (notificacion.titulo === 'Tarea calificada') return '/estudiante/calificaciones';
+    if (notificacion.tipo === 'documento_revisado') return '/estudiante/mis-practicas';
+    return '/dashboard';
   };
 
   useEffect(() => {
@@ -78,23 +86,6 @@ const Notificaciones = () => {
     }
   };
 
-  const marcarTodasLeidas = async () => {
-    try {
-      await api.put('/notificaciones/marcar-todas-leidas');
-      setNotificaciones((prev) => prev.map((not) => ({ ...not, leida: true })));
-      setMensaje({
-        tipo: 'success',
-        texto: 'Todas las notificaciones marcadas como leídas',
-      });
-      setTimeout(() => setMensaje({ tipo: '', texto: '' }), 3000);
-    } catch (error) {
-      setMensaje({
-        tipo: 'error',
-        texto: 'Error al marcar notificaciones',
-      });
-    }
-  };
-
   const ejecutarEliminarNotificacion = async (id) => {
     try {
       await api.delete(`/notificaciones/${id}`);
@@ -104,7 +95,7 @@ const Notificaciones = () => {
         texto: 'Notificación eliminada',
       });
       setTimeout(() => setMensaje({ tipo: '', texto: '' }), 3000);
-    } catch (error) {
+    } catch {
       setMensaje({
         tipo: 'error',
         texto: 'Error al eliminar notificación',
@@ -179,15 +170,6 @@ const Notificaciones = () => {
                 : 'No tienes notificaciones nuevas'}
             </p>
           </div>
-          {noLeidas > 0 && (
-            <button
-              onClick={marcarTodasLeidas}
-              className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors border border-slate-200 flex items-center space-x-1.5"
-            >
-              <FiCheck className="h-3.5 w-3.5" />
-              <span>Marcar todas como leídas</span>
-            </button>
-          )}
         </div>
 
         {/* Mensaje */}
@@ -269,12 +251,21 @@ const Notificaciones = () => {
                   className={`bg-white rounded-xl border border-slate-200 transition-all p-4 ${
                     !notificacion.leida ? 'border-l-4 border-[#ec3724] bg-slate-50/50' : ''
                   } ${enlaceDestino ? 'cursor-pointer hover:border-slate-300' : ''}`}
+                  role="link"
+                  tabIndex={0}
                   onClick={async () => {
                     if (!notificacion.leida) {
                       await marcarComoLeida(notificacion.id);
                     }
                     if (enlaceDestino) {
                       navigate(enlaceDestino);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      event.currentTarget.click();
                     }
                   }}
                 >
@@ -320,18 +311,6 @@ const Notificaciones = () => {
 
                     {/* Acciones */}
                     <div className="flex items-center space-x-1 ml-4 flex-shrink-0">
-                      {!notificacion.leida && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            marcarComoLeida(notificacion.id);
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-[#ec3724] hover:bg-slate-50 rounded transition-colors"
-                          title="Marcar como leída"
-                        >
-                          <FiCheck className="h-4 w-4" />
-                        </button>
-                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

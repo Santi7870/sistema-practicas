@@ -649,6 +649,7 @@ const calificarEntrega = async (req, res) => {
         titulo: 'Tarea calificada',
         mensaje: `Tu entrega de "${entrega.tarea.titulo}" fue calificada con ${notaFinal}/${max}.${comentario ? ` Comentario: ${comentario}` : ''}`,
         tipo: 'documento_revisado',
+        enlace: '/estudiante/calificaciones',
       });
     }
 
