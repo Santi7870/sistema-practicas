@@ -124,6 +124,15 @@ const GestionConvenios = () => {
     return String(val).trim().replace(/\r\n/g, '\n');
   };
 
+  const normalizarTextoConvenio = (value) => String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+
+  const huellaConvenio = (row) => [
+    row.nombreEmpresa, row.contacto, row.telefono, row.actividades,
+    row.horario, row.cuposLaboralesTotales, row.cuposComunitariosTotales,
+  ].map(normalizarTextoConvenio).join('|');
+
   // Manejar cambio de archivo Excel
   const handleImportarExcel = (e) => {
     const file = e.target.files[0];
@@ -380,21 +389,21 @@ const GestionConvenios = () => {
     }
 
     // Validar duplicados en el Excel listado
-    const nombresVistos = new Set();
+    const huellasVistas = new Set();
     const duplicados = [];
     for (const d of datosPrevisualizacion) {
-      const clean = d.nombreEmpresa.trim().toLowerCase();
-      if (clean) {
-        if (nombresVistos.has(clean)) {
+      const huella = huellaConvenio(d);
+      if (huella) {
+        if (huellasVistas.has(huella)) {
           duplicados.push(d.nombreEmpresa.trim());
         }
-        nombresVistos.add(clean);
+        huellasVistas.add(huella);
       }
     }
     if (duplicados.length > 0) {
       setMensaje({
         tipo: 'error',
-        texto: `No se puede guardar: el archivo contiene nombres de empresa duplicados: ${[...new Set(duplicados)].join(', ')}. Por favor, elimine o edite las filas duplicadas (usando el ícono de papelera) antes de continuar.`
+        texto: `No se puede guardar: el archivo contiene filas exactamente duplicadas: ${[...new Set(duplicados)].join(', ')}. Por favor, elimine o edite las filas repetidas.`
       });
       return;
     }
@@ -580,14 +589,14 @@ const GestionConvenios = () => {
 
     // Contar duplicados y existentes en Base de Datos
     const repetidosEnBD = datosPrevisualizacion.filter(row => {
-      const clean = row.nombreEmpresa.trim().toLowerCase();
-      return clean && convenios.some(c => c.nombreEmpresa.trim().toLowerCase() === clean);
+      const huella = huellaConvenio(row);
+      return huella && convenios.some(c => huellaConvenio(c) === huella);
     }).length;
 
     const duplicadosEnExcel = datosPrevisualizacion.filter((row, idx) => {
-      const clean = row.nombreEmpresa.trim().toLowerCase();
-      if (!clean) return false;
-      return datosPrevisualizacion.findIndex(r => r.nombreEmpresa.trim().toLowerCase() === clean) !== idx;
+      const huella = huellaConvenio(row);
+      if (!huella) return false;
+      return datosPrevisualizacion.findIndex(r => huellaConvenio(r) === huella) !== idx;
     }).length;
 
     return (
@@ -1857,4 +1866,4 @@ const ModalConvenio = ({ convenio, cerrar, actualizar, setMensaje }) => {
   );
 };
 
-export default GestionConvenios;
+export default GestionConvenios;

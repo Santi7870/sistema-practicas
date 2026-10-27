@@ -2,6 +2,17 @@ const { Convenio, Inscripcion, Estudiante, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const { verificarConveniosVencidos } = require('../utils/verificadorExpiracion');
 
+const normalizarTextoConvenio = (value) => String(value || '')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/\s+/g, ' ').trim().toLowerCase();
+
+const huellaConvenio = (data) => [
+  data.nombreEmpresa, data.contacto, data.telefono, data.actividades,
+  data.horario, data.cuposLaboralesTotales, data.cuposComunitariosTotales,
+].map(normalizarTextoConvenio).join('|');
+
+const telefonoValido = (value) => /^[0-9A-Za-zÁÉÍÓÚáéíóúÑñ\s.\-+/()]+$/.test(value);
+
 /**
  * @desc    Obtener todos los convenios
  * @route   GET /api/convenios
@@ -175,7 +186,7 @@ const crearConvenio = async (req, res) => {
       });
     }
 
-    if (telefono && !/^[0-9\s\-\+\/\(\)]+$/.test(telefono)) {
+    if (telefono && !telefonoValido(telefono)) {
       return res.status(400).json({
         success: false,
         message: 'El número de teléfono contiene caracteres no válidos.',
@@ -277,7 +288,7 @@ const actualizarConvenio = async (req, res) => {
       });
     }
 
-    if (telefono && !/^[0-9\s\-\+\/\(\)]+$/.test(telefono)) {
+    if (telefono && !telefonoValido(telefono)) {
       return res.status(400).json({
         success: false,
         message: 'El número de teléfono contiene caracteres no válidos.',
@@ -421,15 +432,15 @@ const crearConveniosMasivo = async (req, res) => {
       });
     }
 
-    const nombresEnPeticion = new Set();
+    const huellasEnPeticion = new Set();
     const duplicadosInternos = [];
     for (const data of convenios) {
-      const clean = (data.nombreEmpresa || '').trim().toLowerCase();
-      if (clean) {
-        if (nombresEnPeticion.has(clean)) {
+      const huella = huellaConvenio(data);
+      if (huella) {
+        if (huellasEnPeticion.has(huella)) {
           duplicadosInternos.push(data.nombreEmpresa.trim());
         }
-        nombresEnPeticion.add(clean);
+        huellasEnPeticion.add(huella);
       }
     }
 
@@ -444,6 +455,10 @@ const crearConveniosMasivo = async (req, res) => {
 
     const creados = [];
     const errores = [];
+    const conveniosExistentes = await Convenio.findAll({
+      where: { eliminado: false },
+      transaction,
+    });
 
     // Iterar para procesar uno a uno y ejecutar hooks de la instancia (como beforeSave para cuposTotales)
     for (const data of convenios) {
@@ -478,7 +493,7 @@ const crearConveniosMasivo = async (req, res) => {
           continue;
         }
 
-        if (telefono && !/^[0-9\s\-\+\/\(\)]+$/.test(telefono)) {
+        if (telefono && !telefonoValido(telefono)) {
           errores.push({
             id: data.id,
             nombreEmpresa,
@@ -487,20 +502,11 @@ const crearConveniosMasivo = async (req, res) => {
           continue;
         }
 
-        // Buscar si ya existe por nombre y no está eliminado (insensible a mayúsculas/minúsculas y eliminando espacios en blanco)
-        const cleanNombre = nombreEmpresa.trim().toLowerCase();
-        const convenioExistente = await Convenio.findOne({
-          where: {
-            eliminado: false,
-            [Op.and]: [
-              sequelize.where(
-                sequelize.fn('LOWER', sequelize.fn('TRIM', sequelize.col('nombre_empresa'))),
-                cleanNombre
-              )
-            ]
-          },
-          transaction,
-        });
+        // Un mismo proyecto puede tener varias filas con datos distintos.
+        // Solo la misma huella se considera una reimportacion del mismo convenio.
+        const convenioExistente = conveniosExistentes.find((item) =>
+          huellaConvenio(item) === huellaConvenio(data)
+        );
 
         if (convenioExistente) {
           const laborTotales = cuposLaboralesTotales !== undefined ? cuposLaboralesTotales : convenioExistente.cuposLaboralesTotales;
