@@ -26,6 +26,7 @@ const Notificaciones = () => {
   const [paginaActual, setPaginaActual] = useState(1);
   const notificacionesPorPagina = 20;
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [abriendoId, setAbriendoId] = useState(null);
 
   const obtenerEnlace = (notificacion) => {
     if (notificacion.enlace) {
@@ -75,21 +76,14 @@ const Notificaciones = () => {
     }
   };
 
-  const marcarComoLeida = async (id) => {
-    try {
-      await api.put(`/notificaciones/${id}/marcar-leida`);
-      setNotificaciones((prev) =>
-        prev.map((not) => (not.id === id ? { ...not, leida: true } : not))
-      );
-    } catch (error) {
-      console.error('Error al marcar notificación:', error);
-    }
+  const eliminarNotificacion = async (id) => {
+    await api.delete(`/notificaciones/${id}`);
+    setNotificaciones((prev) => prev.filter((not) => not.id !== id));
   };
 
   const ejecutarEliminarNotificacion = async (id) => {
     try {
-      await api.delete(`/notificaciones/${id}`);
-      setNotificaciones((prev) => prev.filter((not) => not.id !== id));
+      await eliminarNotificacion(id);
       setMensaje({
         tipo: 'success',
         texto: 'Notificación eliminada',
@@ -100,6 +94,19 @@ const Notificaciones = () => {
         tipo: 'error',
         texto: 'Error al eliminar notificación',
       });
+    }
+  };
+
+  const abrirNotificacion = async (notificacion, enlaceDestino) => {
+    if (abriendoId !== null) return;
+    setAbriendoId(notificacion.id);
+    try {
+      await eliminarNotificacion(notificacion.id);
+      navigate(enlaceDestino);
+    } catch {
+      setMensaje({ tipo: 'error', texto: 'No se pudo abrir la notificación. Intenta de nuevo.' });
+    } finally {
+      setAbriendoId(null);
     }
   };
 
@@ -253,14 +260,7 @@ const Notificaciones = () => {
                   } ${enlaceDestino ? 'cursor-pointer hover:border-slate-300' : ''}`}
                   role="link"
                   tabIndex={0}
-                  onClick={async () => {
-                    if (!notificacion.leida) {
-                      await marcarComoLeida(notificacion.id);
-                    }
-                    if (enlaceDestino) {
-                      navigate(enlaceDestino);
-                    }
-                  }}
+                  onClick={() => abrirNotificacion(notificacion, enlaceDestino)}
                   onKeyDown={(event) => {
                     if (event.target !== event.currentTarget) return;
                     if (event.key === 'Enter' || event.key === ' ') {
@@ -316,6 +316,7 @@ const Notificaciones = () => {
                           e.stopPropagation();
                           setConfirmDeleteId(notificacion.id);
                         }}
+                        disabled={abriendoId === notificacion.id}
                         className="p-1.5 text-slate-400 hover:text-[#ec3724] hover:bg-slate-50 rounded transition-colors"
                         title="Eliminar"
                       >
