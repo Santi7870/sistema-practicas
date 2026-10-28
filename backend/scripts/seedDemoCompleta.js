@@ -229,34 +229,35 @@ async function seedDemoCompleta() {
       }
     }
 
-    const tasksByType = {};
+    const tasksByTutor = {};
     for (const [tipoPractica, tutorKey] of [['laboral', 'laborales'], ['comunitaria', 'comunales']]) {
-      const docente = docentes[tutorKey][0];
-      tasksByType[tipoPractica] = [];
-      for (let ciclo = 1; ciclo <= 3; ciclo += 1) {
-        const closed = ciclo < 3;
-        const task = await ensureTask(docente, tipoPractica, ciclo, '01', {
-          titulo: `Evidencia de avance - Ciclo ${ciclo}`,
-          descripcion: `Actividad demostrativa de prueba para el ciclo ${ciclo}. Revisar instrucciones y entregar el archivo solicitado.`,
-          puntajeMaximo: 10,
-          fechaApertura: daysAgo(ciclo === 1 ? 28 : ciclo === 2 ? 18 : 3),
-          fechaCierre: closed ? daysAgo(ciclo === 1 ? 20 : 8) : daysFromNow(7),
-          activa: true,
-        }, transaction);
-        const secondTask = await ensureTask(docente, tipoPractica, ciclo, '02', {
-          titulo: `Reflexión y reporte - Ciclo ${ciclo}`,
-          descripcion: 'Reporte breve de resultados y aprendizajes del ciclo.',
-          puntajeMaximo: 10,
-          fechaApertura: daysAgo(ciclo === 1 ? 25 : ciclo === 2 ? 15 : 2),
-          fechaCierre: closed ? daysAgo(ciclo === 1 ? 17 : 5) : daysFromNow(10),
-          activa: true,
-        }, transaction);
-        tasksByType[tipoPractica].push(task, secondTask);
+      for (const docente of docentes[tutorKey]) {
+        tasksByTutor[docente.id] = [];
+        for (let ciclo = 1; ciclo <= 3; ciclo += 1) {
+          const closed = ciclo < 3;
+          const task = await ensureTask(docente, tipoPractica, ciclo, '01', {
+            titulo: `Evidencia de avance - Ciclo ${ciclo}`,
+            descripcion: `Actividad demostrativa de prueba para el ciclo ${ciclo}. Revisar instrucciones y entregar el archivo solicitado.`,
+            puntajeMaximo: 10,
+            fechaApertura: daysAgo(ciclo === 1 ? 28 : ciclo === 2 ? 18 : 3),
+            fechaCierre: closed ? daysAgo(ciclo === 1 ? 20 : 8) : daysFromNow(7),
+            activa: true,
+          }, transaction);
+          const secondTask = await ensureTask(docente, tipoPractica, ciclo, '02', {
+            titulo: `Reflexión y reporte - Ciclo ${ciclo}`,
+            descripcion: 'Reporte breve de resultados y aprendizajes del ciclo.',
+            puntajeMaximo: 10,
+            fechaApertura: daysAgo(ciclo === 1 ? 25 : ciclo === 2 ? 15 : 2),
+            fechaCierre: closed ? daysAgo(ciclo === 1 ? 17 : 5) : daysFromNow(10),
+            activa: true,
+          }, transaction);
+          tasksByTutor[docente.id].push(task, secondTask);
+        }
       }
     }
 
     for (const row of aprobadas) {
-      const tasks = tasksByType[row.tipoPractica];
+      const tasks = tasksByTutor[row.tutor.id] || [];
       for (const task of tasks) {
         const cycle = task.numeroCiclo;
         const isFinalized = row.estudiante.estadoProceso === 'finalizado';
