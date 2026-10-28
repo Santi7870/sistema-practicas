@@ -190,6 +190,35 @@ async function seedDemoCompleta() {
       ['Héctor Guamán', 'hector.guaman@espoch.edu.ec', '9108', 5, 'en_proceso', 'laboral', 'aprobada', true],
     ];
 
+    // Additional synthetic cohort to represent recurring platform usage.
+    const extraStates = [
+      ['en_proceso', 'laboral', 'aprobada', true],
+      ['finalizado', 'comunitaria', 'aprobada', true],
+      ['pendiente_inicio', 'laboral', 'aprobada', true],
+      ['asignado', 'comunitaria', 'pendiente', true],
+      ['en_proceso', 'laboral', 'aprobada', true],
+      ['sin_asignar', 'comunitaria', 'rechazada', false],
+      ['finalizado', 'laboral', 'aprobada', true],
+      ['en_proceso', 'comunitaria', 'aprobada', true],
+      ['pendiente_inicio', 'laboral', 'aprobada', true],
+      ['en_proceso', 'comunitaria', 'aprobada', true],
+      ['finalizado', 'laboral', 'aprobada', true],
+      ['asignado', 'comunitaria', 'pendiente', true],
+    ];
+    extraStates.forEach(([estadoProceso, tipoPractica, estadoInscripcion, activa], index) => {
+      const number = 9110 + index;
+      estudiantesData.push([
+        `Estudiante Demo ${index + 1}`,
+        `estudiante.demo${index + 1}@espoch.edu.ec`,
+        String(number),
+        4 + (index % 5),
+        estadoProceso,
+        tipoPractica,
+        estadoInscripcion,
+        activa,
+      ]);
+    });
+
     const cohort = [];
     for (const [nombres, email, codigo, semestre, estadoProceso, tipoPractica, estadoInscripcion, activa] of estudiantesData) {
       const { user } = await findOrCreateUser({ email, nombres, rol: 'estudiante' }, transaction);
@@ -284,6 +313,44 @@ async function seedDemoCompleta() {
       await Notificacion.findOrCreate({
         where: { usuarioId: admin.id, titulo: 'Datos demo de tesis cargados' },
         defaults: { usuarioId: admin.id, titulo: 'Datos demo de tesis cargados', mensaje: 'Se creó un escenario de prueba con estudiantes, docentes, convenios, tareas y calificaciones.', tipo: 'sistema', leida: false, enlace: '/admin/estudiantes' },
+        transaction,
+      });
+    }
+
+    // Notifications give the demo realistic activity in each role.
+    for (const row of cohort) {
+      const title = row.inscripcion.estadoInscripcion === 'rechazada'
+        ? 'Solicitud de práctica rechazada'
+        : row.estudiante.estadoProceso === 'finalizado'
+          ? 'Práctica finalizada'
+          : 'Tareas y ciclos disponibles';
+      await Notificacion.findOrCreate({
+        where: { usuarioId: row.user.id, titulo: title },
+        defaults: {
+          usuarioId: row.user.id,
+          titulo: title,
+          mensaje: row.inscripcion.estadoInscripcion === 'rechazada'
+            ? 'Revisa la observación registrada por el administrador.'
+            : 'Consulta el detalle de tu práctica y revisa las actividades asignadas por tu docente.',
+          tipo: row.inscripcion.estadoInscripcion === 'rechazada' ? 'rechazo' : 'sistema',
+          leida: row.estudiante.id % 3 === 0,
+          enlace: '/estudiante/practicas',
+        },
+        transaction,
+      });
+    }
+
+    for (const docente of [...docentes.laborales, ...docentes.comunales]) {
+      await Notificacion.findOrCreate({
+        where: { usuarioId: docente.usuarioId, titulo: 'Nuevas entregas por revisar' },
+        defaults: {
+          usuarioId: docente.usuarioId,
+          titulo: 'Nuevas entregas por revisar',
+          mensaje: 'Hay actividades demo pendientes de revisión en tus grupos asignados.',
+          tipo: 'sistema',
+          leida: false,
+          enlace: '/docente/ciclos',
+        },
         transaction,
       });
     }
