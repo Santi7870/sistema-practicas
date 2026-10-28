@@ -44,6 +44,7 @@ const GestionConvenios = () => {
   const [sheetsDataReferencia, setSheetsDataReferencia] = useState({});
   const [guardandoMasivo, setGuardandoMasivo] = useState(false);
   const [erroresPrevisualizacion, setErroresPrevisualizacion] = useState({});
+  const [fechaMasiva, setFechaMasiva] = useState('');
 
   // Estados para Plazo Compartido Global
   const [fechaGlobalInput, setFechaGlobalInput] = useState('');
@@ -381,8 +382,13 @@ const GestionConvenios = () => {
       return;
     }
 
+    // Una fecha seleccionada se aplica automáticamente para evitar filas sin vencimiento.
+    const datosConFecha = fechaMasiva
+      ? datosPrevisualizacion.map((row) => ({ ...row, fechaVencimiento: row.fechaVencimiento || fechaMasiva }))
+      : datosPrevisualizacion;
+
     // Validar celdas requeridas
-    const invalidos = datosPrevisualizacion.filter(d => !d.nombreEmpresa.trim() || !d.area.trim() || !d.fechaVencimiento);
+    const invalidos = datosConFecha.filter(d => !d.nombreEmpresa.trim() || !d.area.trim() || !d.fechaVencimiento);
     if (invalidos.length > 0) {
       setMensaje({ tipo: 'error', texto: 'Existen celdas obligatorias vacías o sin asignar (Nombre de Empresa, Área o Fecha de Vencimiento).' });
       return;
@@ -391,7 +397,7 @@ const GestionConvenios = () => {
     // Validar duplicados en el Excel listado
     const huellasVistas = new Set();
     const duplicados = [];
-    for (const d of datosPrevisualizacion) {
+    for (const d of datosConFecha) {
       const huella = huellaConvenio(d);
       if (huella) {
         if (huellasVistas.has(huella)) {
@@ -412,7 +418,7 @@ const GestionConvenios = () => {
     setMensaje({ tipo: '', texto: '' });
 
     try {
-      const response = await api.post('/convenios/bulk', { convenios: datosPrevisualizacion });
+      const response = await api.post('/convenios/bulk', { convenios: datosConFecha });
       setMensaje({
         tipo: 'success',
         texto: response.data.message || `¡Carga masiva completada! ${response.data.data.cantidadCreados} convenios creados/actualizados con éxito.`
@@ -693,13 +699,14 @@ const GestionConvenios = () => {
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Asignar Vencimiento Masivo:</label>
                 <input
                   type="date"
-                  id="fechaMasivaInput"
+                  value={fechaMasiva}
+                  onChange={(e) => setFechaMasiva(e.target.value)}
                   className="border border-slate-300 rounded-lg py-1 px-2.5 text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-[#ec3724] font-semibold text-slate-800 cursor-pointer"
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    const dateVal = document.getElementById('fechaMasivaInput').value;
+                    const dateVal = fechaMasiva;
                     if (!dateVal) {
                       setMensaje({ tipo: 'error', texto: 'Por favor selecciona una fecha válida antes de aplicar de forma masiva.' });
                       return;
