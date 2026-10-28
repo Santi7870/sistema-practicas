@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed:ciclos": "node scripts/seedCiclosCalificaciones.js",
+    "seed:demo": "node scripts/seedDemoCompleta.js",
     "clean:ciclos": "node scripts/cleanCiclosCalificaciones.js"
   },
   "keywords": [
