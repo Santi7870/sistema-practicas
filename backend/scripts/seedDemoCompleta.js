@@ -160,19 +160,19 @@ async function seedDemoCompleta() {
 
     const convenios = {
       laboral: await findOrCreateConvenio({
-        nombreEmpresa: 'Demo Tech Solutions S.A.', area: 'Desarrollo de Software', contacto: 'Laura Méndez', telefono: '0990001001',
+        nombreEmpresa: 'Nexa Tecnología S.A.', area: 'Desarrollo de Software', contacto: 'Laura Méndez', telefono: '0990001001',
         actividades: 'Desarrollo y mantenimiento de sistemas web.', horario: 'Lunes a viernes, 08:00 a 14:00',
         cuposLaboralesTotales: 12, cuposLaboralesOcupados: 5, cuposComunitariosTotales: 0, cuposComunitariosOcupados: 0,
         activo: true, fechaVencimiento: daysFromNow(120), fechaLimiteRequisitos: daysFromNow(30),
       }, transaction),
       comunitaria: await findOrCreateConvenio({
-        nombreEmpresa: 'Fundación Comunidad Digital', area: 'Inclusión Tecnológica', contacto: 'Pedro Salazar', telefono: '0990001002',
+        nombreEmpresa: 'Fundación Innovación Comunitaria', area: 'Inclusión Tecnológica', contacto: 'Pedro Salazar', telefono: '0990001002',
         actividades: 'Capacitación digital y apoyo tecnológico comunitario.', horario: 'Martes a sábado, 09:00 a 13:00',
         cuposLaboralesTotales: 0, cuposLaboralesOcupados: 0, cuposComunitariosTotales: 10, cuposComunitariosOcupados: 4,
         activo: true, fechaVencimiento: daysFromNow(90), fechaLimiteRequisitos: daysFromNow(25),
       }, transaction),
       vencido: await findOrCreateConvenio({
-        nombreEmpresa: 'Demo Convenio Vencido', area: 'Soporte Informático', contacto: 'María Torres', telefono: '0990001003',
+        nombreEmpresa: 'Servicios Tecnológicos Andinos S.A.', area: 'Soporte Informático', contacto: 'María Torres', telefono: '0990001003',
         actividades: 'Soporte y documentación de infraestructura.', horario: 'Lunes a viernes, 08:00 a 12:00',
         cuposLaboralesTotales: 4, cuposLaboralesOcupados: 4, cuposComunitariosTotales: 0, cuposComunitariosOcupados: 0,
         activo: false, fechaVencimiento: daysAgo(5), fechaLimiteRequisitos: daysAgo(20),
@@ -190,7 +190,7 @@ async function seedDemoCompleta() {
       ['Héctor Guamán', 'hector.guaman@espoch.edu.ec', '9108', 5, 'en_proceso', 'laboral', 'aprobada', true],
     ];
 
-    // Additional synthetic cohort to represent recurring platform usage.
+    // Additional synthetic cohort with institution-like names for the presentation scenario.
     const extraStates = [
       ['en_proceso', 'laboral', 'aprobada', true],
       ['finalizado', 'comunitaria', 'aprobada', true],
@@ -205,11 +205,25 @@ async function seedDemoCompleta() {
       ['finalizado', 'laboral', 'aprobada', true],
       ['asignado', 'comunitaria', 'pendiente', true],
     ];
+    const extraPeople = [
+      ['Luis Cárdenas', 'luis.cardenas@espoch.edu.ec'],
+      ['Sofía Villacís', 'sofia.villacis@espoch.edu.ec'],
+      ['Mateo Simbaña', 'mateo.simbana@espoch.edu.ec'],
+      ['Valeria Ponce', 'valeria.ponce@espoch.edu.ec'],
+      ['Andrés Chicaiza', 'andres.chicaiza@espoch.edu.ec'],
+      ['Camila Narváez', 'camila.narvaez@espoch.edu.ec'],
+      ['Nicolás Alvarado', 'nicolas.alvarado@espoch.edu.ec'],
+      ['Paula Yánez', 'paula.yanez@espoch.edu.ec'],
+      ['Sebastián Guachamín', 'sebastian.guachamin@espoch.edu.ec'],
+      ['Daniela Montalvo', 'daniela.montalvo@espoch.edu.ec'],
+      ['Martín Chiluisa', 'martin.chiluisa@espoch.edu.ec'],
+      ['Alejandra Zambrano', 'alejandra.zambrano@espoch.edu.ec'],
+    ];
     extraStates.forEach(([estadoProceso, tipoPractica, estadoInscripcion, activa], index) => {
       const number = 9110 + index;
       estudiantesData.push([
-        `Estudiante Demo ${index + 1}`,
-        `estudiante.demo${index + 1}@espoch.edu.ec`,
+        extraPeople[index][0],
+        extraPeople[index][1],
         String(number),
         4 + (index % 5),
         estadoProceso,
@@ -266,7 +280,7 @@ async function seedDemoCompleta() {
           const closed = ciclo < 3;
           const task = await ensureTask(docente, tipoPractica, ciclo, '01', {
             titulo: `Evidencia de avance - Ciclo ${ciclo}`,
-            descripcion: `Actividad demostrativa de prueba para el ciclo ${ciclo}. Revisar instrucciones y entregar el archivo solicitado.`,
+            descripcion: `Actividad académica correspondiente al ciclo ${ciclo}. Revisar las instrucciones y entregar el archivo solicitado.`,
             puntajeMaximo: 10,
             fechaApertura: daysAgo(ciclo === 1 ? 28 : ciclo === 2 ? 18 : 3),
             fechaCierre: closed ? daysAgo(ciclo === 1 ? 20 : 8) : daysFromNow(7),
@@ -311,8 +325,8 @@ async function seedDemoCompleta() {
     const admin = await Usuario.findOne({ where: { rol: 'admin' }, transaction });
     if (admin) {
       await Notificacion.findOrCreate({
-        where: { usuarioId: admin.id, titulo: 'Datos demo de tesis cargados' },
-        defaults: { usuarioId: admin.id, titulo: 'Datos demo de tesis cargados', mensaje: 'Se creó un escenario de prueba con estudiantes, docentes, convenios, tareas y calificaciones.', tipo: 'sistema', leida: false, enlace: '/admin/estudiantes' },
+        where: { usuarioId: admin.id, titulo: 'Actividad académica registrada' },
+        defaults: { usuarioId: admin.id, titulo: 'Actividad académica registrada', mensaje: 'Se registraron nuevos estudiantes, docentes, convenios, tareas y calificaciones en el sistema.', tipo: 'sistema', leida: false, enlace: '/admin/estudiantes' },
         transaction,
       });
     }
@@ -346,7 +360,7 @@ async function seedDemoCompleta() {
         defaults: {
           usuarioId: docente.usuarioId,
           titulo: 'Nuevas entregas por revisar',
-          mensaje: 'Hay actividades demo pendientes de revisión en tus grupos asignados.',
+          mensaje: 'Hay actividades pendientes de revisión en tus grupos asignados.',
           tipo: 'sistema',
           leida: false,
           enlace: '/docente/ciclos',
